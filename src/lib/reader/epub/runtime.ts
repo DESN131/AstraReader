@@ -20,6 +20,44 @@ export interface EpubRelocatedLocation {
   atEnd?: boolean;
 }
 
+type EpubRenderOptions = NonNullable<Parameters<Book["renderTo"]>[1]>;
+
+export function renderEpubWithoutUnload(
+  book: Book,
+  element: Element,
+  options?: EpubRenderOptions,
+): Rendition {
+  const originalAddEventListener = window.addEventListener;
+
+  // EPUB.js 0.3 registers an obsolete window unload listener on every
+  // rendition. Chrome's Permissions Policy now rejects that listener.
+  // Rendition construction is synchronous, so suppress it only during this
+  // call and keep application cleanup on pagehide/unmount instead.
+  window.addEventListener = function filteredAddEventListener(
+    this: Window,
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    eventOptions?: boolean | AddEventListenerOptions,
+  ) {
+    if (type === "unload") {
+      return;
+    }
+
+    return originalAddEventListener.call(
+      this,
+      type,
+      listener,
+      eventOptions,
+    );
+  } as typeof window.addEventListener;
+
+  try {
+    return book.renderTo(element, options);
+  } finally {
+    window.addEventListener = originalAddEventListener;
+  }
+}
+
 export function toError(value: unknown, fallback: string): Error {
   if (value instanceof Error) {
     return value;

@@ -34,6 +34,7 @@ import {
   getCurrentEpubLocation,
   getEpubPercentage,
   readEpubApiError,
+  renderEpubWithoutUnload,
   toEpubReadingLocation,
   toError,
   type EpubRelocatedLocation,
@@ -405,7 +406,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           session.chapterLabels = createEpubChapterLabelLookup(session.toc);
 
           const initialSize = measureViewport(host);
-          const rendition = loadedBook.renderTo(host, {
+          const rendition = renderEpubWithoutUnload(loadedBook, host, {
             width: initialSize.width,
             height: initialSize.height,
             manager: "default",
