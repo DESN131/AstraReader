@@ -84,6 +84,7 @@ export function createEpubThemeRules(
       "text-justify": "inter-ideograph",
       "overflow-wrap": "break-word",
       "word-break": "normal",
+      "column-gap": "0 !important",
       "-webkit-text-size-adjust": "100%",
     },
     "body p, body li, body dd, body dt, body blockquote": {

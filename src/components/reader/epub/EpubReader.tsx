@@ -1,6 +1,6 @@
 "use client";
 
-import ePub, { type Book, type Rendition } from "epubjs";
+import ePub, { type Book, type Contents, type Rendition } from "epubjs";
 import { AlertTriangle, LoaderCircle, RefreshCw } from "lucide-react";
 import {
   forwardRef,
@@ -33,6 +33,7 @@ import {
   destroyEpubBook,
   getCurrentEpubLocation,
   getEpubPercentage,
+  getEpubKeyboardDirection,
   readEpubApiError,
   renderEpubWithoutUnload,
   toEpubReadingLocation,
@@ -459,13 +460,57 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
               toError(value, "EPUB 页面渲染失败"),
             );
           };
+          const handleKeyDown = (event: KeyboardEvent) => {
+            const direction = getEpubKeyboardDirection(event);
+            if (!direction) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            void enqueueNavigation(session, async () => {
+              const moved = await moveSession(session, direction);
+
+              if (moved) {
+                emitLocation(
+                  session,
+                  callbacksRef.current,
+                  session.currentLocation,
+                );
+                animateSurface(
+                  paperRef.current,
+                  settingsRef.current,
+                  direction,
+                );
+              }
+            }).catch((error: unknown) => {
+              callbacksRef.current.onError(
+                toError(
+                  error,
+                  direction === "next"
+                    ? "EPUB 翻到下一页失败"
+                    : "EPUB 翻到上一页失败",
+                ),
+              );
+            });
+          };
+          const attachKeyboardHandler = (contents: Contents) => {
+            contents.document.addEventListener(
+              "keydown",
+              handleKeyDown,
+              { passive: false },
+            );
+          };
 
           rendition.on("relocated", handleRelocated);
           rendition.on("displayError", handleDisplayError);
+          rendition.hooks.content.register(attachKeyboardHandler);
 
           session.detachListeners = () => {
             rendition.off("relocated", handleRelocated);
             rendition.off("displayError", handleDisplayError);
+            rendition.hooks.content.deregister(attachKeyboardHandler);
             rendition.hooks.content.deregister(hardenEpubContents);
           };
 

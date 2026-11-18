@@ -3,7 +3,10 @@
 import type { Book, Rendition } from "epubjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { renderEpubWithoutUnload } from "./runtime";
+import {
+  getEpubKeyboardDirection,
+  renderEpubWithoutUnload,
+} from "./runtime";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -36,5 +39,24 @@ describe("renderEpubWithoutUnload", () => {
     window.dispatchEvent(new Event("resize"));
     expect(unloadCalled).toBe(false);
     expect(resizeCalled).toBe(true);
+  });
+});
+
+describe("getEpubKeyboardDirection", () => {
+  it("maps navigation keys and ignores modified keys", () => {
+    const event = (key: string, shiftKey = false) =>
+      new KeyboardEvent("keydown", { key, shiftKey });
+
+    expect(getEpubKeyboardDirection(event("ArrowRight"))).toBe("next");
+    expect(getEpubKeyboardDirection(event("PageDown"))).toBe("next");
+    expect(getEpubKeyboardDirection(event(" "))).toBe("next");
+    expect(getEpubKeyboardDirection(event("ArrowLeft"))).toBe("previous");
+    expect(getEpubKeyboardDirection(event("PageUp"))).toBe("previous");
+    expect(getEpubKeyboardDirection(event(" ", true))).toBe("previous");
+    expect(
+      getEpubKeyboardDirection(
+        new KeyboardEvent("keydown", { key: "ArrowRight", ctrlKey: true }),
+      ),
+    ).toBeNull();
   });
 });

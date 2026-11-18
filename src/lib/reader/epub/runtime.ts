@@ -22,6 +22,34 @@ export interface EpubRelocatedLocation {
 
 type EpubRenderOptions = NonNullable<Parameters<Book["renderTo"]>[1]>;
 
+export type EpubNavigationDirection = "next" | "previous";
+
+export function getEpubKeyboardDirection(
+  event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">,
+): EpubNavigationDirection | null {
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return null;
+  }
+
+  if (
+    event.key === "ArrowRight" ||
+    event.key === "PageDown" ||
+    (event.key === " " && !event.shiftKey)
+  ) {
+    return "next";
+  }
+
+  if (
+    event.key === "ArrowLeft" ||
+    event.key === "PageUp" ||
+    (event.key === " " && event.shiftKey)
+  ) {
+    return "previous";
+  }
+
+  return null;
+}
+
 export function renderEpubWithoutUnload(
   book: Book,
   element: Element,
