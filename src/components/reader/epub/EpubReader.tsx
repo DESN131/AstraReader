@@ -25,6 +25,8 @@ import { ensureEpubLocations } from "@/lib/reader/epub/locations";
 import {
   createEpubChapterLabelLookup,
   findEpubChapterLabel,
+  findFirstEpubReadingTarget,
+  isEpubFrontMatterTarget,
   mapEpubNavigationToToc,
 } from "@/lib/reader/epub/navigation";
 import {
@@ -453,15 +455,25 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
             initialLocationRef.current?.kind === "epub-cfi"
               ? initialLocationRef.current.cfi
               : "";
-          const fallbackTarget =
+          const requestedHref =
             initialLocationRef.current?.kind === "epub-cfi"
               ? initialLocationRef.current.href
               : "";
+          const requestedIsFrontMatter = isEpubFrontMatterTarget(
+            requestedHref || requestedTarget,
+          );
+          const firstReadingTarget = findFirstEpubReadingTarget(navigation.toc);
+          const preferredTarget =
+            (!requestedIsFrontMatter && requestedTarget) ||
+            firstReadingTarget ||
+            requestedTarget;
+          const fallbackTarget =
+            requestedIsFrontMatter || !requestedHref ? "" : requestedHref;
           let displayed = false;
 
-          if (requestedTarget) {
+          if (preferredTarget) {
             try {
-              await rendition.display(requestedTarget);
+              await rendition.display(preferredTarget);
               displayed = true;
             } catch {
               // Try the href from the same reading location next.
@@ -471,7 +483,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           if (
             !displayed &&
             fallbackTarget &&
-            fallbackTarget !== requestedTarget
+            fallbackTarget !== preferredTarget
           ) {
             try {
               await rendition.display(fallbackTarget);

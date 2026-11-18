@@ -6,6 +6,8 @@ import { DEFAULT_READER_SETTINGS } from "@/lib/reader/defaults";
 import {
   createEpubChapterLabelLookup,
   findEpubChapterLabel,
+  findFirstEpubReadingTarget,
+  isEpubFrontMatterTarget,
   mapEpubNavigationToToc,
 } from "./navigation";
 import {
@@ -56,6 +58,29 @@ describe("EPUB navigation", () => {
     expect(findEpubChapterLabel(labels, "Text/Chapter 1.xhtml")).toBe(
       "第一章",
     );
+  });
+
+  it("skips front matter and starts at the first readable chapter", () => {
+    expect(
+      isEpubFrontMatterTarget("Text/cover.xhtml"),
+    ).toBe(true);
+    expect(
+      isEpubFrontMatterTarget("Text/Section003.xhtml"),
+    ).toBe(false);
+
+    expect(
+      findFirstEpubReadingTarget([
+        { label: "封面", href: "Text/cover.xhtml" },
+        { label: "制作信息", href: "Text/message.xhtml" },
+        {
+          label: "第一章",
+          href: "Text/chapter-intro.xhtml",
+          subitems: [
+            { label: "第一话", href: "Text/Section001.xhtml" },
+          ],
+        },
+      ]),
+    ).toBe("Text/Section001.xhtml");
   });
 });
 
