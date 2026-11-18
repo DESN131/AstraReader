@@ -19,8 +19,7 @@
 
 ### `GET /api/books/by-hash/:sha256`
 
-- `200`：返回已有 `Book`。
-- `404`：不存在。
+- `200`：存在时返回 `Book`，不存在时返回 `null`。
 
 ### `POST /api/uploads/book`
 
@@ -104,7 +103,7 @@ TXT 使用 `{ "kind": "txt-offset", "offset": 12345, "chapterId": "chapter-2" }`
 
 ### `GET|PUT /api/books/:id/locations`
 
-读取或保存 EPUB locations JSON。PUT 只接受 `application/json`，单本上限 20 MiB。
+读取或保存 EPUB locations JSON。GET 在缓存尚未生成时返回 `null`。PUT 只接受 `application/json`，单本上限 20 MiB。
 
 ### `GET|POST /api/books/:id/bookmarks`
 

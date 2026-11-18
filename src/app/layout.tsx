@@ -8,6 +8,9 @@ export const metadata: Metadata = {
     template: "%s · AstraReader",
   },
   description: "安静的本地 TXT / EPUB 电子书阅读器",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

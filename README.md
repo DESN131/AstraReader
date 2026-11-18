@@ -55,7 +55,6 @@ npm start
 npm run lint
 npm run typecheck
 npm test
-npm run test:e2e
 ```
 
 ## 安全说明

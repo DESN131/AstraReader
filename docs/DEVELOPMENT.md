@@ -19,7 +19,6 @@ npm run dev
 npm run lint
 npm run typecheck
 npm test
-npm run test:e2e
 npm run build
 npm start
 ```
@@ -37,7 +36,7 @@ npm start
 
 - 单元测试：编码识别、章节目录、字符位置、哈希、路径校验。
 - Route Handler 集成测试：上传、导入、重复、超限、删除、进度和书签。
-- Playwright：导入 TXT/EPUB、打开书、目录、搜索、书签、字体主题、移动端和刷新续读。
+- Playwright CLI：导入 TXT/EPUB、打开书、目录、搜索、书签、字体主题、移动端和刷新续读。
 - 生产验收必须执行 `npm run build`，不能只验证开发服务器。
 
 ## Git 约定
