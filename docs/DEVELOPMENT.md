@@ -1,55 +1,154 @@
-# 开发指南
+# 开发与测试指南
 
 ## 环境
 
 - Node.js 24+
 - npm 11+
-- Windows PowerShell、macOS 或 Linux 均可
+- Windows PowerShell、macOS 或 Linux
+- 推荐现代 Chrome、Edge、Safari 或 Firefox
 
 ```powershell
 npm install
 npm run dev
 ```
 
-默认访问 `http://localhost:3000`。开发和运行都监听 `0.0.0.0`，以便手机或平板访问。
+开发和运行默认监听 `0.0.0.0:3000`。
 
-## 常用命令
+## 环境变量
+
+```powershell
+$env:ASTRAREADER_DATA_DIR = "E:\AstraReaderData"
+$env:ASTRAREADER_MAX_UPLOAD_MB = "500"
+$env:PORT = "3000"
+npm run dev
+```
+
+不设置时使用项目内 `./data`。
+
+## 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm run dev` | 启动开发服务器 |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript 类型检查 |
+| `npm test` | Vitest 单元与组件测试 |
+| `npm run test:watch` | Vitest watch 模式 |
+| `npm run build` | Next.js 生产构建 |
+| `npm start` | 启动已构建的生产服务 |
+
+## 模块边界
+
+- `src/server/**` 只能被 Server Component 或 Route Handler 引用。
+- 服务端模块必须保持 `server-only`。
+- Client Component 不得引用 SQLite、Node `fs`、`Readable` 或本地路径。
+- 输入校验使用 `src/shared/schemas.ts`，不要在路由中另写一套规则。
+- 浏览器端阅读设置通过 `src/lib/reader/settings.ts` 读写。
+- 应用主题通过 `src/lib/reader/theme.ts` 写入全局 CSS 变量。
+- 原始书籍和缓存不能放入 `public/`。
+
+## 页面与 API
+
+- 书库页由 Server Component 直接读取 SQLite。
+- 阅读页由 Server Component 获取图书详情和初始进度。
+- 交互更新通过同源 Route Handler。
+- 所有动态页面与 API 显式使用动态渲染。
+- 大型上传使用原始 `application/octet-stream`，不使用 `request.formData()` 或 Server Action。
+
+## 开发数据
+
+默认数据库和书籍位于 `data/`，该目录已被 Git 忽略。
+
+重置空书库：
+
+1. 停止服务。
+2. 备份需要保留的 `data/`。
+3. 删除或移动 `data/`。
+4. 重新启动服务。
+
+不要在服务运行时删除 WAL 数据库文件。
+
+## 测试
+
+### 单元与组件测试
+
+```powershell
+npm test
+```
+
+现有测试覆盖：
+
+- TXT 编码、章节、分块、搜索和字符锚点。
+- EPUB 导航、主题、搜索、位置和键盘映射。
+- VS Code 深灰主题和设置归一化。
+- 通用格式化函数。
+
+### 构建检查
 
 ```powershell
 npm run lint
 npm run typecheck
 npm test
 npm run build
-npm start
 ```
 
-## 模块规则
+交付前四项必须全部通过。
 
-- Client Component 不能导入 `src/server/**`、`better-sqlite3` 或 Node 文件系统。
-- 共享输入验证放在 `src/shared/schemas.ts`。
-- 所有文件路径从 `ASTRAREADER_DATA_DIR` 解析，并验证最终路径仍在数据根目录内。
-- 上传文件只能由 Route Handler 返回，不能复制到 `public/` 中。
-- 书库、阅读和统计页面显式使用动态渲染。
-- 所有用户可见错误必须包含稳定的 error code，便于测试。
+### 浏览器验证
 
-## 测试策略
+使用独立的 Playwright CLI 会话，不操作使用者当前正在使用的浏览器：
 
-- 单元测试：编码识别、章节目录、字符位置、哈希、路径校验。
-- Route Handler 集成测试：上传、导入、重复、超限、删除、进度和书签。
-- Playwright CLI：导入 TXT/EPUB、打开书、目录、搜索、书签、字体主题、移动端和刷新续读。
-- 生产验收必须执行 `npm run build`，不能只验证开发服务器。
+```powershell
+npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127.0.0.1:3000
+```
+
+建议验证：
+
+- 从书架点入 EPUB 后正文立即可见。
+- iframe 内的左右键只翻一页。
+- 翻页后章节标题不意外变化。
+- 连续右翻再左翻能回到同一位置。
+- 书架、阅读页和目录抽屉主题一致。
+- 移动端目录抽屉可用。
+
+## EPUB 调试要点
+
+### 分页宽度
+
+EPUB.js 的分页步长必须等于真实列步长：
+
+```text
+layout width = content column width + column gap
+```
+
+不要强制把 `column-gap` 设为 `0`。正文有左右 padding 时，这会改变实际列宽，导致滚页跨度与列跨度不一致。
+
+### 键盘焦点
+
+iframe 内的键盘事件不会冒泡到父页面。EPUB 阅读器必须在 iframe 文档上注册自己的非 passive `keydown` 监听。
+
+### 生命周期
+
+- 切换书籍时销毁 `rendition` 和 `book`。
+- 回收 archive Blob URL。
+- 不用旧 `window.unload`；使用组件卸载和 `pagehide`。
+
+### 脚本 sandbox
+
+EPUB iframe 禁止脚本执行。浏览器可能显示 “Blocked script execution” 的安全日志，这是预期行为，不应为了消除日志而开启脚本。
 
 ## Git 约定
 
-每个可独立验证的阶段提交一次，例如：
+每个可验证阶段单独提交，例如：
 
-- `docs: define AstraReader architecture`
-- `feat(server): add local library persistence and import API`
-- `feat(web): build library and reader experience`
-- `test: cover import and reading flows`
+- `docs: ...`
+- `feat(server): ...`
+- `feat(web): ...`
+- `fix(epub): ...`
+- `test: ...`
 
-不要提交 `data/`、`.next/`、`node_modules/`、测试产物或任何真实电子书。
+不要提交 `data/`、`.next/`、`node_modules/`、`output/`、`.playwright-cli/` 或真实电子书。
 
-## 清理开发数据
+## 常见开发问题
 
-先停止开发服务器，再删除 `data/` 后重新启动即可创建空书库。不要在服务运行时直接删除 SQLite 文件。
+完整排障见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
