@@ -17,6 +17,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   useDeferredValue,
+  useEffect,
   useState,
 } from "react";
 
@@ -25,6 +26,8 @@ import { ContinueReadingStrip } from "@/components/library/ContinueReadingStrip"
 import { DeleteBookDialog } from "@/components/library/DeleteBookDialog";
 import { ImportDialog } from "@/components/library/ImportDialog";
 import { MetadataDialog } from "@/components/library/MetadataDialog";
+import { useReaderSettings } from "@/lib/reader/settings";
+import { applyAppTheme } from "@/lib/reader/theme";
 import { formatReadingTime } from "@/lib/utils";
 import type { Book, BookFormat, ReadingStats } from "@/shared/types";
 
@@ -59,6 +62,7 @@ function compareTitle(left: Book, right: Book): number {
 
 export function LibraryPage({ initialBooks, stats }: LibraryPageProps) {
   const router = useRouter();
+  const { settings } = useReaderSettings();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(
     query.trim().toLocaleLowerCase("zh-CN"),
@@ -68,6 +72,10 @@ export function LibraryPage({ initialBooks, stats }: LibraryPageProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
+
+  useEffect(() => {
+    applyAppTheme(settings);
+  }, [settings]);
 
   const trackedBooks = initialBooks.filter(
     (book) => book.lastOpenedAt || book.progressPercentage > 0,

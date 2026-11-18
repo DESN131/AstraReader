@@ -68,8 +68,7 @@ export function createEpubThemeRules(
   );
   const textAlign = settings.textAlign === "left" ? "left" : "justify";
   const fontStack = FONT_STACKS[settings.fontFamily] ?? FONT_STACKS.serif;
-  const isDark =
-    settings.themeId === "night" || settings.themeId === "black";
+  const isDark = theme.dark;
 
   return {
     "html, body": {

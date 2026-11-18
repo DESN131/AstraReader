@@ -38,6 +38,10 @@ export interface ReaderTheme {
   foreground: string;
   muted: string;
   border: string;
+  accent: string;
+  accentStrong: string;
+  accentSoft: string;
+  dark: boolean;
 }
 
 export const READER_THEMES: ReaderTheme[] = [
@@ -48,6 +52,10 @@ export const READER_THEMES: ReaderTheme[] = [
     foreground: "#24231f",
     muted: "#737068",
     border: "#ddd9cd",
+    accent: "#176b5b",
+    accentStrong: "#0b5144",
+    accentSoft: "#dcece6",
+    dark: false,
   },
   {
     id: "warm",
@@ -56,6 +64,10 @@ export const READER_THEMES: ReaderTheme[] = [
     foreground: "#332d23",
     muted: "#786d5b",
     border: "#d9c7a4",
+    accent: "#7b5a24",
+    accentStrong: "#624417",
+    accentSoft: "#eadbb9",
+    dark: false,
   },
   {
     id: "green",
@@ -64,6 +76,10 @@ export const READER_THEMES: ReaderTheme[] = [
     foreground: "#233128",
     muted: "#647267",
     border: "#bdccbf",
+    accent: "#2d6f4f",
+    accentStrong: "#1d563b",
+    accentSoft: "#c8dcc9",
+    dark: false,
   },
   {
     id: "night",
@@ -72,6 +88,22 @@ export const READER_THEMES: ReaderTheme[] = [
     foreground: "#e7e5de",
     muted: "#a8aca6",
     border: "#3b413e",
+    accent: "#4fb39c",
+    accentStrong: "#78cbb8",
+    accentSoft: "#2d4b43",
+    dark: true,
+  },
+  {
+    id: "graphite",
+    label: "VS Code 深灰",
+    background: "#1e1e1e",
+    foreground: "#d4d4d4",
+    muted: "#9d9d9d",
+    border: "#3c3c3c",
+    accent: "#007acc",
+    accentStrong: "#0e639c",
+    accentSoft: "#264f78",
+    dark: true,
   },
   {
     id: "black",
@@ -80,6 +112,10 @@ export const READER_THEMES: ReaderTheme[] = [
     foreground: "#d8dad5",
     muted: "#8d918c",
     border: "#282c29",
+    accent: "#68b6a4",
+    accentStrong: "#8acdbc",
+    accentSoft: "#23322d",
+    dark: true,
   },
   {
     id: "custom",
@@ -88,6 +124,10 @@ export const READER_THEMES: ReaderTheme[] = [
     foreground: "#26231e",
     muted: "#777168",
     border: "#ddd7ca",
+    accent: "#176b5b",
+    accentStrong: "#0b5144",
+    accentSoft: "#dcece6",
+    dark: false,
   },
 ];
 

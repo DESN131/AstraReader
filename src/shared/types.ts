@@ -92,6 +92,7 @@ export type ReaderThemeId =
   | "green"
   | "night"
   | "black"
+  | "graphite"
   | "custom";
 
 export interface ReaderSettings {

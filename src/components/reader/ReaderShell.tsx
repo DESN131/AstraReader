@@ -16,18 +16,15 @@ import { ReaderToolbar } from "@/components/reader/ReaderToolbar";
 import { EpubReader } from "@/components/reader/epub/EpubReader";
 import { TxtReader } from "@/components/reader/txt/TxtReader";
 import { apiFetch } from "@/lib/api-client";
-import {
-  DEFAULT_READER_SETTINGS,
-  READER_SETTINGS_STORAGE_KEY,
-  resolveReaderTheme,
-} from "@/lib/reader/defaults";
+import { resolveReaderTheme } from "@/lib/reader/defaults";
+import { useReaderSettings } from "@/lib/reader/settings";
+import { applyAppTheme } from "@/lib/reader/theme";
 import type { ReaderHandle, ReaderViewProps } from "@/lib/reader/types";
 import { cn, toLocalDay } from "@/lib/utils";
 import type {
   BookDetails,
   Bookmark,
   ReadingLocation,
-  ReaderSettings,
   TocItem,
 } from "@/shared/types";
 
@@ -43,8 +40,7 @@ interface CurrentProgress {
 
 export function ReaderShell({ book }: ReaderShellProps) {
   const readerRef = useRef<ReaderHandle>(null);
-  const [settings, setSettings] = useState(DEFAULT_READER_SETTINGS);
-  const settingsHydratedRef = useRef(false);
+  const { settings, setSettings } = useReaderSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -66,29 +62,7 @@ export function ReaderShell({ book }: ReaderShellProps) {
   }, [current]);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(READER_SETTINGS_STORAGE_KEY);
-      if (stored) {
-        // Hydrate browser-only persisted settings after the server render.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSettings(normalizeSettings(JSON.parse(stored) as Partial<ReaderSettings>));
-      }
-    } catch {
-      // Invalid local state falls back to defaults.
-    } finally {
-      settingsHydratedRef.current = true;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!settingsHydratedRef.current) {
-      return;
-    }
-
-    window.localStorage.setItem(
-      READER_SETTINGS_STORAGE_KEY,
-      JSON.stringify(settings),
-    );
+    applyAppTheme(settings);
   }, [settings]);
 
   useEffect(() => {
@@ -496,31 +470,4 @@ export function ReaderShell({ book }: ReaderShellProps) {
       ) : null}
     </div>
   );
-}
-
-function normalizeSettings(input: Partial<ReaderSettings>): ReaderSettings {
-  return {
-    ...DEFAULT_READER_SETTINGS,
-    ...input,
-    fontSize: clamp(input.fontSize ?? DEFAULT_READER_SETTINGS.fontSize, 14, 32),
-    lineHeight: clamp(
-      input.lineHeight ?? DEFAULT_READER_SETTINGS.lineHeight,
-      1.4,
-      2.2,
-    ),
-    paragraphSpacing: clamp(
-      input.paragraphSpacing ?? DEFAULT_READER_SETTINGS.paragraphSpacing,
-      0,
-      2,
-    ),
-    contentWidth: clamp(
-      input.contentWidth ?? DEFAULT_READER_SETTINGS.contentWidth,
-      520,
-      980,
-    ),
-  };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
