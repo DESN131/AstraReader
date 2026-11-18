@@ -1,4 +1,4 @@
-.root {
+.astra-txt-root {
   position: relative;
   width: 100%;
   height: 100%;
@@ -11,7 +11,7 @@
     background-color 160ms ease;
 }
 
-.stage {
+.astra-txt-stage {
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
@@ -23,7 +23,7 @@
     clamp(18px, 4vw, 52px);
 }
 
-.viewport {
+.astra-txt-viewport {
   position: relative;
   width: min(100%, var(--txt-content-width));
   height: 100%;
@@ -35,13 +35,13 @@
   touch-action: pan-y;
 }
 
-.viewport:focus-visible {
+.astra-txt-viewport:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--txt-foreground) 35%, transparent);
   outline-offset: 8px;
   border-radius: 2px;
 }
 
-.content {
+.astra-txt-content {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -60,28 +60,28 @@
   -webkit-user-select: text;
 }
 
-.paragraph,
-.heading {
+.astra-txt-paragraph,
+.astra-txt-heading {
   margin: 0;
   white-space: pre-wrap;
 }
 
-.paragraph {
+.astra-txt-paragraph {
   margin-block-end: var(--txt-paragraph-spacing);
   orphans: 2;
   widows: 2;
 }
 
-.cjkContent .paragraph {
+.astra-txt-cjk-content .astra-txt-paragraph {
   text-indent: 2em;
   line-break: strict;
 }
 
-.cjkContent .sourceIndented {
+.astra-txt-cjk-content .astra-txt-source-indented {
   text-indent: 0;
 }
 
-.heading {
+.astra-txt-heading {
   margin-block: 0.85em 1.1em;
   font-size: 1.08em;
   font-weight: 600;
@@ -91,11 +91,11 @@
   break-after: avoid;
 }
 
-.heading:first-child {
+.astra-txt-heading:first-child {
   margin-block-start: 0;
 }
 
-.state {
+.astra-txt-state {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -109,16 +109,16 @@
   text-align: center;
 }
 
-.spinner {
+.astra-txt-spinner {
   width: 22px;
   height: 22px;
   border: 2px solid color-mix(in srgb, var(--txt-muted) 28%, transparent);
   border-top-color: var(--txt-muted);
   border-radius: 999px;
-  animation: spin 750ms linear infinite;
+  animation: astra-txt-spin 750ms linear infinite;
 }
 
-.errorMessage {
+.astra-txt-error-message {
   max-width: 38rem;
   margin: 0;
   color: var(--txt-foreground);
@@ -126,7 +126,7 @@
   line-height: 1.7;
 }
 
-.retryButton {
+.astra-txt-retry-button {
   display: inline-flex;
   gap: 7px;
   align-items: center;
@@ -142,43 +142,44 @@
   border-radius: 7px;
 }
 
-.retryButton:hover {
+.astra-txt-retry-button:hover {
   background: color-mix(in srgb, var(--txt-foreground) 10%, transparent);
 }
 
-.retryButton:focus-visible {
+.astra-txt-retry-button:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--txt-foreground) 40%, transparent);
   outline-offset: 2px;
 }
 
-@keyframes spin {
+@keyframes astra-txt-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 @media (max-width: 640px) {
-  .stage {
+  .astra-txt-stage {
     padding:
       clamp(16px, 2.8vh, 28px)
       clamp(16px, 5vw, 26px);
   }
 
-  .content {
+  .astra-txt-content {
     line-height: max(var(--txt-line-height), 1.7);
   }
 
-  .cjkContent .paragraph:not(.sourceIndented) {
+  .astra-txt-cjk-content
+    .astra-txt-paragraph:not(.astra-txt-source-indented) {
     text-indent: 1.5em;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .root {
+  .astra-txt-root {
     transition: none;
   }
 
-  .spinner {
+  .astra-txt-spinner {
     animation-duration: 1.6s;
   }
 }

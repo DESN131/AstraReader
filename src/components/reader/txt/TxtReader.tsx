@@ -50,7 +50,7 @@ import {
   type NormalizedSearchIndex,
 } from "@/lib/reader/txt/search";
 
-import styles from "./TxtReader.module.css";
+import "./txt-reader.css";
 
 type ReaderStatus = "loading" | "ready" | "error";
 
@@ -366,10 +366,10 @@ function RenderBlock({
     <div
       className={
         block.kind === "heading"
-          ? styles.heading
+          ? "astra-txt-heading"
           : cn(
-              styles.paragraph,
-              hasSourceIndent && styles.sourceIndented,
+              "astra-txt-paragraph",
+              hasSourceIndent && "astra-txt-source-indented",
             )
       }
     >
@@ -1101,22 +1101,22 @@ const TxtReaderImplementation = forwardRef<
   } as CSSProperties;
 
   return (
-    <div className={styles.root} style={readerVariables}>
-      <div className={styles.stage}>
+    <div className="astra-txt-root" style={readerVariables}>
+      <div className="astra-txt-stage">
         {status === "loading" ? (
-          <div className={styles.state} role="status">
-            <span className={styles.spinner} aria-hidden="true" />
+          <div className="astra-txt-state" role="status">
+            <span className="astra-txt-spinner" aria-hidden="true" />
             <span>正在载入文本</span>
           </div>
         ) : null}
 
         {status === "error" ? (
-          <div className={styles.state} role="alert">
-            <p className={styles.errorMessage}>
+          <div className="astra-txt-state" role="alert">
+            <p className="astra-txt-error-message">
               {errorMessage || "文本载入失败"}
             </p>
             <button
-              className={styles.retryButton}
+              className="astra-txt-retry-button"
               type="button"
               onClick={() => setLoadAttempt((attempt) => attempt + 1)}
             >
@@ -1129,7 +1129,7 @@ const TxtReaderImplementation = forwardRef<
         {status === "ready" && model ? (
           <div
             ref={viewportRef}
-            className={styles.viewport}
+            className="astra-txt-viewport"
             role="region"
             aria-label={`${book.title} 阅读区`}
             tabIndex={0}
@@ -1143,8 +1143,8 @@ const TxtReaderImplementation = forwardRef<
             <div
               ref={contentRef}
               className={cn(
-                styles.content,
-                isCjkContent && styles.cjkContent,
+                "astra-txt-content",
+                isCjkContent && "astra-txt-cjk-content",
               )}
               style={{ columnWidth: `${settings.contentWidth}px` }}
             >

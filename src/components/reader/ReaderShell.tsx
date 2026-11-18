@@ -430,7 +430,7 @@ export function ReaderShell({ book }: ReaderShellProps) {
 
         <main
           className={cn(
-            "h-full touch-pan-y overflow-hidden",
+            "absolute inset-0 touch-pan-y overflow-hidden",
             settings.animation !== "none" && "transition-colors duration-200",
           )}
           onPointerDown={handlePointerDown}

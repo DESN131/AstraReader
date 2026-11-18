@@ -46,7 +46,7 @@ import {
 } from "@/lib/reader/epub/theme";
 import type { ReaderSettings } from "@/shared/types";
 
-import styles from "./EpubReader.module.css";
+import "./epub-reader.css";
 
 type ReaderStatus = "loading" | "ready" | "error";
 type NavigationDirection = "next" | "previous";
@@ -98,10 +98,32 @@ function measureViewport(element: HTMLElement): {
   height: number;
 } {
   const rect = element.getBoundingClientRect();
+  const viewportHeight =
+    typeof window === "undefined"
+      ? 720
+      : Math.max(320, window.innerHeight - 72);
 
   return {
-    width: Math.max(1, Math.floor(rect.width || element.clientWidth || 640)),
-    height: Math.max(1, Math.floor(rect.height || element.clientHeight || 720)),
+    width: Math.max(
+      320,
+      Math.floor(
+        rect.width >= 32
+          ? rect.width
+          : element.clientWidth >= 32
+            ? element.clientWidth
+            : 640,
+      ),
+    ),
+    height: Math.max(
+      320,
+      Math.floor(
+        rect.height >= 32
+          ? rect.height
+          : element.clientHeight >= 32
+            ? element.clientHeight
+            : viewportHeight,
+      ),
+    ),
   };
 }
 
@@ -194,18 +216,18 @@ function animateSurface(
   }
 
   paper.classList.remove(
-    styles.slideForward,
-    styles.slideBackward,
-    styles.fade,
+    "astra-epub-slide-forward",
+    "astra-epub-slide-backward",
+    "astra-epub-fade",
   );
   void paper.offsetWidth;
 
   if (settings.animation === "fade" || direction === "fade") {
-    paper.classList.add(styles.fade);
+    paper.classList.add("astra-epub-fade");
   } else if (direction === "previous") {
-    paper.classList.add(styles.slideBackward);
+    paper.classList.add("astra-epub-slide-backward");
   } else {
-    paper.classList.add(styles.slideForward);
+    paper.classList.add("astra-epub-slide-forward");
   }
 }
 
@@ -727,26 +749,26 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
 
     return (
       <div
-        className={styles.root}
+        className="astra-epub-root"
         style={surfaceStyle}
         aria-label="EPUB 阅读区"
         aria-busy={status === "loading"}
       >
-        <div className={styles.stage}>
-          <div ref={paperRef} className={styles.paper}>
-            <div ref={hostRef} className={styles.viewport} />
+        <div className="astra-epub-stage">
+          <div ref={paperRef} className="astra-epub-paper">
+            <div ref={hostRef} className="astra-epub-viewport" />
           </div>
         </div>
 
         {status === "loading" ? (
-          <div className={styles.statusLayer} role="status" aria-live="polite">
-            <div className={styles.statusPanel}>
+          <div className="astra-epub-status-layer" role="status" aria-live="polite">
+            <div className="astra-epub-status-panel">
               <LoaderCircle
-                className={`${styles.statusIcon} ${styles.spinner}`}
+                className="astra-epub-status-icon astra-epub-spinner"
                 aria-hidden="true"
               />
-              <p className={styles.statusTitle}>正在打开 EPUB</p>
-              <p className={styles.statusMessage}>
+              <p className="astra-epub-status-title">正在打开 EPUB</p>
+              <p className="astra-epub-status-message">
                 正在解析目录并准备分页排版
               </p>
             </div>
@@ -754,19 +776,19 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
         ) : null}
 
         {status === "error" ? (
-          <div className={styles.statusLayer} role="alert">
-            <div className={styles.statusPanel}>
+          <div className="astra-epub-status-layer" role="alert">
+            <div className="astra-epub-status-panel">
               <AlertTriangle
-                className={styles.statusIcon}
+                className="astra-epub-status-icon"
                 aria-hidden="true"
               />
-              <p className={styles.statusTitle}>无法打开这本书</p>
-              <p className={styles.statusMessage}>
+              <p className="astra-epub-status-title">无法打开这本书</p>
+              <p className="astra-epub-status-message">
                 {errorMessage || "EPUB 文件可能已损坏或暂时不可用"}
               </p>
               <button
                 type="button"
-                className={styles.retryButton}
+                className="astra-epub-retry-button"
                 onClick={() => setRetryKey((current) => current + 1)}
               >
                 <RefreshCw size={16} aria-hidden="true" />
