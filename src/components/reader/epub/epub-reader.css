@@ -41,13 +41,7 @@
 
 .astra-epub-viewport [class~="epub-container"],
 .astra-epub-viewport [class~="epub-view"] {
-  width: 100% !important;
-  height: 100% !important;
   background: transparent !important;
-}
-
-.astra-epub-viewport [class~="epub-container"] {
-  overflow: hidden !important;
 }
 
 .astra-epub-status-layer {
