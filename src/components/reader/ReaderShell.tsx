@@ -233,9 +233,10 @@ export function ReaderShell({ book }: ReaderShellProps) {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
+      const target = event.target;
       if (
-        target?.matches(
+        target instanceof HTMLElement &&
+        target.matches(
           "input, textarea, select, button, a, [contenteditable='true']",
         )
       ) {
