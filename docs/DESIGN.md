@@ -124,7 +124,9 @@ visible page width = content column width + column gap
 
 修改字号、行距、段距或版心后，EPUB.js 不会因为视口尺寸未变而自动重新分页。
 阅读器会先清理当前视图，再按当前 CFI 重新 display 一次，强制刷新列布局；
-视口尺寸变化时也会把 CFI 传给 `resize`，以保持当前位置。
+视口尺寸变化时也会把 CFI 传给 `resize`，以保持当前位置。每次翻页前还会比较
+iframe 正文列宽与 `.epub-container` 视口宽度，发现旧布局时自动按当前 CFI
+重建，避免热更新或缩放后继续使用旧列宽。
 
 ### 键盘
 

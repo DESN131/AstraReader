@@ -149,6 +149,63 @@ function getEpubScroller(session: EpubReaderSession): HTMLElement | null {
   return session.host.querySelector<HTMLElement>(".epub-container");
 }
 
+async function ensureCurrentPaginationLayout(
+  session: EpubReaderSession,
+): Promise<void> {
+  if (session.readingMode !== "paginated") {
+    return;
+  }
+
+  const scroller = getEpubScroller(session);
+  const iframe = scroller?.querySelector<HTMLIFrameElement>("iframe");
+  const body = iframe?.contentDocument?.body;
+
+  if (
+    !session.rendition ||
+    !scroller ||
+    !body ||
+    Math.abs(body.clientWidth - scroller.clientWidth) <= 1
+  ) {
+    return;
+  }
+
+  const rendition = session.rendition;
+  const location =
+    session.currentLocation ??
+    (await getCurrentEpubLocation(rendition));
+  const { width, height } = measureViewport(session.host);
+  const resize = rendition.resize as (
+    width: number,
+    height: number,
+    cfi?: string,
+  ) => void;
+
+  resize.call(rendition, width, height, location?.start?.cfi);
+  await nextFrame();
+
+  if (Math.abs(body.clientWidth - scroller.clientWidth) <= 1) {
+    await rendition.reportLocation();
+    return;
+  }
+
+  rendition.clear();
+
+  try {
+    await rendition.display(location?.start?.cfi ?? "");
+  } catch {
+    if (!location?.start?.href || location.start.href === location.start.cfi) {
+      throw new Error("EPUB 分页布局同步失败");
+    }
+    await rendition.display(location.start.href);
+  }
+
+  await rendition.reportLocation();
+  const current = await getCurrentEpubLocation(rendition);
+  if (current) {
+    session.currentLocation = current;
+  }
+}
+
 function applyTheme(rendition: Rendition, settings: ReaderSettings) {
   rendition.themes.registerRules(
     "astra-reader",
@@ -406,6 +463,8 @@ async function moveSession(
   if (!session.rendition) {
     return false;
   }
+
+  await ensureCurrentPaginationLayout(session);
 
   const before = await getCurrentEpubLocation(session.rendition);
 
