@@ -6,8 +6,7 @@ import { DEFAULT_READER_SETTINGS } from "@/lib/reader/defaults";
 import {
   createEpubChapterLabelLookup,
   findEpubChapterLabel,
-  findFirstEpubReadingTarget,
-  isEpubFrontMatterTarget,
+  getEpubInitialDisplayTargets,
   mapEpubNavigationToToc,
 } from "./navigation";
 import {
@@ -60,27 +59,24 @@ describe("EPUB navigation", () => {
     );
   });
 
-  it("skips front matter and starts at the first readable chapter", () => {
+  it("only resumes an existing reading location", () => {
+    expect(getEpubInitialDisplayTargets(null)).toEqual([]);
     expect(
-      isEpubFrontMatterTarget("Text/cover.xhtml"),
-    ).toBe(true);
+      getEpubInitialDisplayTargets({
+        kind: "epub-cfi",
+        cfi: "epubcfi(/6/2!/4/2/2:0)",
+        href: "Text/cover.xhtml",
+      }),
+    ).toEqual([
+      "epubcfi(/6/2!/4/2/2:0)",
+      "Text/cover.xhtml",
+    ]);
     expect(
-      isEpubFrontMatterTarget("Text/Section003.xhtml"),
-    ).toBe(false);
-
-    expect(
-      findFirstEpubReadingTarget([
-        { label: "封面", href: "Text/cover.xhtml" },
-        { label: "制作信息", href: "Text/message.xhtml" },
-        {
-          label: "第一章",
-          href: "Text/chapter-intro.xhtml",
-          subitems: [
-            { label: "第一话", href: "Text/Section001.xhtml" },
-          ],
-        },
-      ]),
-    ).toBe("Text/Section001.xhtml");
+      getEpubInitialDisplayTargets({
+        kind: "txt-offset",
+        offset: 0,
+      }),
+    ).toEqual([]);
   });
 });
 

@@ -1,4 +1,7 @@
-import type { TocItem } from "@/shared/types";
+import type {
+  ReadingLocation,
+  TocItem,
+} from "@/shared/types";
 
 export interface EpubNavigationItem {
   id?: string;
@@ -8,11 +11,6 @@ export interface EpubNavigationItem {
 }
 
 const FALLBACK_LABEL = "未命名章节";
-const FRONT_MATTER_LABEL =
-  /^(?:封面|cover|制作信息|版权|copyright|简介|内容简介|内容说明|彩页|插画|插图|目录|contents?|title|书名页|扉页|献词|dedication|鸣谢|acknowledg(?:e)?ments?|quotation)$/iu;
-const FRONT_MATTER_FILE =
-  /(?:^|\/)(?:cover|title|message|summary|contents?|illus(?:tration)?\d*|quotation|dedication|copyright)(?:[-_.]?\d+)?\.xhtml?$/i;
-
 export function normalizeEpubHref(href: string | null | undefined): string {
   if (!href) {
     return "";
@@ -103,36 +101,18 @@ export function findEpubChapterLabel(
   return labels.get(normalizeEpubHref(href)) ?? "";
 }
 
-export function isEpubFrontMatterTarget(
-  href: string | null | undefined,
-): boolean {
-  const normalized = normalizeEpubHref(href);
-  return Boolean(normalized && FRONT_MATTER_FILE.test(normalized));
-}
-
-export function findFirstEpubReadingTarget(
-  items: EpubNavigationItem[] | null | undefined,
-): string | null {
-  if (!items?.length) {
-    return null;
+export function getEpubInitialDisplayTargets(
+  location: ReadingLocation | null | undefined,
+): string[] {
+  if (location?.kind !== "epub-cfi") {
+    return [];
   }
 
-  for (const item of items) {
-    const nested = findFirstEpubReadingTarget(item.subitems);
-    if (nested) {
-      return nested;
-    }
-
-    const label = item.label?.replace(/\s+/g, " ").trim() ?? "";
-    const href = item.href?.trim() ?? "";
-    if (
-      href &&
-      !FRONT_MATTER_LABEL.test(label) &&
-      !isEpubFrontMatterTarget(href)
-    ) {
-      return href;
-    }
-  }
-
-  return null;
+  return Array.from(
+    new Set(
+      [location.cfi.trim(), location.href?.trim()].filter(
+        (target): target is string => Boolean(target),
+      ),
+    ),
+  );
 }

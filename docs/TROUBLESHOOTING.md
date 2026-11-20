@@ -150,7 +150,7 @@ page width = content column width (layout gap = 0)
 Invoke-RestMethod http://127.0.0.1:3000/api/books/<id>/progress
 ```
 
-无效位置会回退到首个正文节点或书籍开头。
+无效位置会回退到 EPUB 书脊第一项（通常是封面）或书籍开头。
 
 ## 局域网设备无法访问
 

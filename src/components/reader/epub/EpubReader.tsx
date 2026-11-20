@@ -25,8 +25,7 @@ import { ensureEpubLocations } from "@/lib/reader/epub/locations";
 import {
   createEpubChapterLabelLookup,
   findEpubChapterLabel,
-  findFirstEpubReadingTarget,
-  isEpubFrontMatterTarget,
+  getEpubInitialDisplayTargets,
   mapEpubNavigationToToc,
 } from "@/lib/reader/epub/navigation";
 import {
@@ -679,45 +678,18 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           });
           session.resizeObserver.observe(host);
 
-          const requestedTarget =
-            initialLocationRef.current?.kind === "epub-cfi"
-              ? initialLocationRef.current.cfi
-              : "";
-          const requestedHref =
-            initialLocationRef.current?.kind === "epub-cfi"
-              ? initialLocationRef.current.href
-              : "";
-          const requestedIsFrontMatter = isEpubFrontMatterTarget(
-            requestedHref || requestedTarget,
+          const initialTargets = getEpubInitialDisplayTargets(
+            initialLocationRef.current,
           );
-          const firstReadingTarget = findFirstEpubReadingTarget(navigation.toc);
-          const preferredTarget =
-            (!requestedIsFrontMatter && requestedTarget) ||
-            firstReadingTarget ||
-            requestedTarget;
-          const fallbackTarget =
-            requestedIsFrontMatter || !requestedHref ? "" : requestedHref;
           let displayed = false;
 
-          if (preferredTarget) {
+          for (const target of initialTargets) {
             try {
-              await rendition.display(preferredTarget);
+              await rendition.display(target);
               displayed = true;
+              break;
             } catch {
-              // Try the href from the same reading location next.
-            }
-          }
-
-          if (
-            !displayed &&
-            fallbackTarget &&
-            fallbackTarget !== preferredTarget
-          ) {
-            try {
-              await rendition.display(fallbackTarget);
-              displayed = true;
-            } catch {
-              // Fall back to the beginning of the publication.
+              // Try the next valid target from the same saved location.
             }
           }
 

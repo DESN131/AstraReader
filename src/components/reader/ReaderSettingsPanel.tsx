@@ -225,18 +225,19 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="grid grid-flow-col auto-cols-fr rounded-base border border-line bg-surface-raised p-1">
+    <div className="grid min-w-0 grid-flow-col auto-cols-fr rounded-base border border-line bg-surface-raised p-1">
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
           className={cn(
-            "h-8 rounded-[5px] px-2 text-sm transition-colors",
+            "h-8 min-w-0 whitespace-nowrap rounded-[5px] px-1 text-[13px] transition-colors",
             value === option.value
               ? "bg-accent text-white"
               : "text-muted hover:text-foreground",
           )}
+          style={{ fontSize: "13px", lineHeight: 1.25 }}
           aria-pressed={value === option.value}
         >
           {option.label}
