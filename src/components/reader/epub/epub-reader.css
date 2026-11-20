@@ -42,6 +42,9 @@
 }
 
 .astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport {
+  width: calc(100% - var(--epub-page-inset));
+  margin-left: var(--epub-page-inset);
+  margin-right: 0;
   overscroll-behavior: contain;
 }
 

@@ -90,6 +90,9 @@ page step      = viewport width
 `--epub-page-inset`。安全边距必须在 EPUB.js 视口外层留出，而不是直接给
 内部的 CSS 列增加 padding，否则会破坏分页步长。
 
+上下滚动模式下，`.astra-epub-viewport` 只保留左侧安全边距并延伸到纸张
+右边缘，使原生滚动条贴齐右侧；分页模式仍保留左右两侧安全边距。
+
 翻页后 `.epub-container.scrollLeft` 应稳定按页宽递增或递减。
 
 ## 控制台出现 Blocked script execution
