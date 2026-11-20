@@ -47,10 +47,12 @@ npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127
 正确关系：
 
 ```text
-page width = content column width (layout gap = 0)
+viewport width = content column width + 32
+page step      = viewport width
 ```
 
-当前实现把 `gap: 0` 传给 EPUB.js，而不是只覆盖 CSS。正文左右 padding 和滚动步长必须由同一个布局参数计算。
+当前实现使用 32px 栏间距，并在 EPUB.js 重新计算布局后同步修正实际列宽、
+`delta` 和 `pageWidth`。正文左右各保留 16px 内边距，避免字形贴边。
 
 正常情况下：
 
@@ -74,8 +76,8 @@ page width = content column width (layout gap = 0)
 
 检查：
 
-- `column-gap` 是否被应用样式覆盖。
-- EPUB.js 的 `gap` 是否仍为 0，且与外层视口宽度一致。
+- EPUB.js 的 `gap` 是否为 32，且实际列宽是否为视口宽度减 32。
+- 翻页前是否执行了旧布局自检和列宽重建。
 - 页面恢复是否落在页边界。
 - 是否同时触发了父页面和 iframe 的两次翻页。
 - 是否仍运行旧 JS bundle。

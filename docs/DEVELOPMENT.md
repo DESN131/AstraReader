@@ -120,15 +120,17 @@ npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127
 
 ### 分页宽度
 
-EPUB.js 的分页步长必须等于真实列步长。当前实现把 `gap: 0` 交给
-EPUB.js，分页步长与可见视口宽度一致：
+EPUB.js 的分页步长必须等于真实页步长。当前实现使用 32px 栏间距，并在
+EPUB.js 每次重算布局后修正实际列宽：
 
 ```text
-layout width = content column width + 0
+viewport width = content column width + 32
+page step      = viewport width
 ```
 
-不要只通过 CSS 覆盖 `column-gap`。CSS 与 EPUB.js 的布局参数不一致时，滚页
-跨度会与列跨度不一致，造成重复、裁切或漏页。
+不能只通过 CSS 设置 `column-gap`。EPUB.js 的 `layout.calculate` 默认会把
+列宽设成整个视口宽度，必须同步修正 `columnWidth`、`delta`、`pageWidth` 和
+`spreadWidth`；否则栏间距会侵占正文，造成首尾字裁切或邻页混入。
 
 ### 键盘焦点
 

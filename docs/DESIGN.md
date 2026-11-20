@@ -105,17 +105,17 @@ EPUB 使用 `epubjs 0.3.93`。分页模式使用
 
 ### 分页不变量
 
-EPUB.js 的分页步长必须与真实内容列一致。AstraReader 将 `gap: 0` 直接传给
-EPUB.js 的 rendition 布局，而不是只覆盖 CSS：
+EPUB.js 的分页步长必须与真实内容列一致。AstraReader 为 rendition 设置
+`gap: 32`，并在每次 EPUB.js 重新计算布局时修正内部列宽：
 
 ```text
-visible page width = content column width + column gap
-                   = content column width
+viewport width = content column width + 32
+page step      = viewport width
 ```
 
-零间距由 EPUB.js 一并计算正文列宽、内边距和 `scrollLeft` 步长，因此每次翻页
-恰好移动一个可见页宽。不要只通过 CSS 把栏间距改成 `0`；CSS 与 EPUB.js
-布局参数不一致时，滚动步长会偏小，造成重复内容、右侧裁切或漏页。
+EPUB.js 会把 32px 栏间距分成正文左右各 16px 内边距；同时将实际文本列宽设为
+`viewport width - 32px`，翻页步长仍等于 `viewport width`。这样每一页都保留
+真实左右空隙，连续翻页也不会把相邻列带进当前视口。
 
 纸张边框和正文视口之间另保留 `--epub-page-inset` 安全边距。EPUB.js 使用
 收窄后的视口宽度作为真实页宽，因此边框不会参与列计算，文字不会贴边，相邻页

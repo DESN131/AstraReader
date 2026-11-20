@@ -52,6 +52,8 @@ import "./epub-reader.css";
 type ReaderStatus = "loading" | "ready" | "error";
 type NavigationDirection = "next" | "previous";
 
+const EPUB_PAGE_GAP = 32;
+
 interface ReaderCallbacks {
   onRelocated: ReaderViewProps["onRelocated"];
   onReady: ReaderViewProps["onReady"];
@@ -149,6 +151,78 @@ function getEpubScroller(session: EpubReaderSession): HTMLElement | null {
   return session.host.querySelector<HTMLElement>(".epub-container");
 }
 
+function alignEpubPaginationStep(rendition: Rendition): void {
+  type EpubLayoutInternals = {
+    __astraPageGutter?: boolean;
+    name?: string;
+    divisor?: number;
+    width?: number;
+    height?: number;
+    gap?: number;
+    columnWidth?: number;
+    delta?: number;
+    pageWidth?: number;
+    spreadWidth?: number;
+    calculate: (
+      width: number,
+      height: number,
+      gap?: number,
+    ) => void;
+    update: (properties: Record<string, number>) => void;
+  };
+  const manager = (
+    rendition as unknown as {
+      manager?: {
+        layout?: EpubLayoutInternals;
+        updateLayout?: () => void;
+      };
+    }
+  ).manager;
+  const layout = manager?.layout;
+
+  if (
+    !layout ||
+    layout.__astraPageGutter ||
+    typeof layout.calculate !== "function"
+  ) {
+    return;
+  }
+
+  const originalCalculate = layout.calculate.bind(layout);
+
+  layout.calculate = function calculateWithPageGutter(
+    width: number,
+    height: number,
+    gap?: number,
+  ) {
+    originalCalculate(width, height, gap);
+
+    if (
+      this.name !== "reflowable" ||
+      this.divisor !== 1 ||
+      typeof this.width !== "number" ||
+      typeof this.gap !== "number" ||
+      this.gap <= 0
+    ) {
+      return;
+    }
+
+    const columnWidth = Math.max(1, this.width - this.gap);
+    this.columnWidth = columnWidth;
+    this.delta = this.width;
+    this.pageWidth = this.width;
+    this.spreadWidth = this.width;
+    this.update({
+      columnWidth,
+      delta: this.delta,
+      pageWidth: this.pageWidth,
+      spreadWidth: this.spreadWidth,
+    });
+  };
+  layout.__astraPageGutter = true;
+  manager?.updateLayout?.();
+}
+
 async function ensureCurrentPaginationLayout(
   session: EpubReaderSession,
 ): Promise<void> {
@@ -181,6 +255,7 @@ async function ensureCurrentPaginationLayout(
   ) => void;
 
   resize.call(rendition, width, height, location?.start?.cfi);
+  alignEpubPaginationStep(rendition);
   await nextFrame();
 
   if (Math.abs(body.clientWidth - scroller.clientWidth) <= 1) {
@@ -199,6 +274,7 @@ async function ensureCurrentPaginationLayout(
     await rendition.display(location.start.href);
   }
 
+  alignEpubPaginationStep(rendition);
   await rendition.reportLocation();
   const current = await getCurrentEpubLocation(rendition);
   if (current) {
@@ -262,6 +338,7 @@ function scheduleResize(
         height,
         session.currentLocation?.start?.cfi,
       );
+      alignEpubPaginationStep(session.rendition);
     } catch (error) {
       console.warn("[AstraReader] EPUB resize deferred", error);
     }
@@ -337,6 +414,7 @@ async function reflowAtCurrentLocation(
       ) => void;
 
       resize.call(rendition, width, height, location.start?.cfi);
+      alignEpubPaginationStep(rendition);
       await nextFrame();
       rendition.clear();
 
@@ -352,6 +430,7 @@ async function reflowAtCurrentLocation(
         await rendition.display(location.start.href);
       }
 
+      alignEpubPaginationStep(rendition);
       await rendition.reportLocation();
       const current = await getCurrentEpubLocation(rendition);
       emitLocation(session, callbacks, current);
@@ -514,6 +593,8 @@ async function moveSession(
     await session.rendition.prev();
   }
 
+  alignEpubPaginationStep(session.rendition);
+
   if (session.readingMode === "scroll") {
     await nextFrame();
     await session.rendition.reportLocation();
@@ -649,7 +730,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
             view: "iframe",
             flow: readingMode === "scroll" ? "scrolled" : "paginated",
             spread: "none",
-            gap: 0,
+            gap: readingMode === "paginated" ? EPUB_PAGE_GAP : 0,
             allowScriptedContent: false,
             allowPopups: false,
             resizeOnOrientationChange: true,
@@ -659,6 +740,8 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           });
 
           session.rendition = rendition;
+          await rendition.started;
+          alignEpubPaginationStep(rendition);
 
           if (session.disposed) {
             return;
@@ -761,6 +844,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           }
 
           session.displayed = true;
+          alignEpubPaginationStep(rendition);
           await rendition.reportLocation();
           await nextFrame();
 
@@ -948,6 +1032,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
                 await rendition.display(location.href);
               }
 
+              alignEpubPaginationStep(rendition);
               const current = await getCurrentEpubLocation(rendition);
               emitLocation(session, callbacksRef.current, current);
               animateSurface(paperRef.current, settingsRef.current, "fade");
