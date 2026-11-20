@@ -56,6 +56,26 @@
   width: 100% !important;
 }
 
+.astra-epub-root[data-reading-mode="paginated"] .astra-epub-viewport::before,
+.astra-epub-root[data-reading-mode="paginated"] .astra-epub-viewport::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 3px;
+  pointer-events: none;
+  content: "";
+  background: var(--epub-background, #fffdf8);
+}
+
+.astra-epub-root[data-reading-mode="paginated"] .astra-epub-viewport::before {
+  left: 0;
+}
+
+.astra-epub-root[data-reading-mode="paginated"] .astra-epub-viewport::after {
+  right: 0;
+}
+
 .astra-epub-viewport [class~="epub-container"],
 .astra-epub-viewport [class~="epub-view"] {
   background: transparent !important;
