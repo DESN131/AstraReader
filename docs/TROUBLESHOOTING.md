@@ -84,6 +84,10 @@ page width = content column width (layout gap = 0)
 `scrollHeight` 是否大于 `clientHeight`，以及阅读方式切换后是否创建了新的
 `rendition`。当前实现会在分页和滚动之间重建 rendition，以当前 CFI 恢复。
 
+如果正文贴住纸张左右边框，检查 `.astra-epub-viewport` 是否应用了
+`--epub-page-inset`。安全边距必须在 EPUB.js 视口外层留出，而不是直接给
+内部的 CSS 列增加 padding，否则会破坏分页步长。
+
 翻页后 `.epub-container.scrollLeft` 应稳定按页宽递增或递减。
 
 ## 控制台出现 Blocked script execution
