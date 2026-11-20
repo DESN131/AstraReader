@@ -10,7 +10,8 @@ AstraReader 是单用户、本地自托管的网页电子书阅读器。核心�
 - EPUB 封面、元数据、嵌套目录、CFI 进度和 locations 缓存。
 - TXT 编码检测、章节识别、字符偏移和分页恢复。
 - 书内搜索、书签、进度续读、最近阅读和按日阅读时长。
-- 全局主题、字体、字号、行距、段距、版心、对齐和翻页动画。
+- 全局主题、字体、字号、行距、段距、版心、对齐和翻页方式。
+- 分页阅读与上下滚动阅读，支持键盘、工具栏和触控操作。
 - 局域网免登录访问。
 
 明确不支持：
@@ -87,7 +88,9 @@ docs/                    项目文档
 
 ## EPUB 实现
 
-EPUB 使用 `epubjs 0.3.93`，默认分页管理器，`flow: "paginated"`、`spread: "none"`。
+EPUB 使用 `epubjs 0.3.93`。分页模式使用
+`flow: "paginated"`、`manager: "default"`、`spread: "none"`；上下滚动模式使用
+`flow: "scrolled"`，由同一个 rendition 的垂直滚动容器承载正文。
 
 关键行为：
 
@@ -98,16 +101,25 @@ EPUB 使用 `epubjs 0.3.93`，默认分页管理器，`flow: "paginated"`、`spr
 - locations 生成后写入 `data/books/<id>/locations.json`，下次直接加载。
 - 切换书籍和组件卸载时销毁 rendition、book 并回收 Blob URL。
 - EPUB 内嵌脚本被 sandbox 阻止；远程资源被拦截。
+- 切换阅读方式时销毁当前 rendition，并从当前 CFI 重新创建，避免复用旧布局。
 
 ### 分页不变量
 
-EPUB.js 的分页步长必须与真实内容列一致：
+EPUB.js 的分页步长必须与真实内容列一致。AstraReader 将 `gap: 0` 直接传给
+EPUB.js 的 rendition 布局，而不是只覆盖 CSS：
 
 ```text
 visible page width = content column width + column gap
+                   = content column width
 ```
 
-当前布局中，EPUB.js 会给正文左右各加半个栏间距作为内边距。不要手动把栏间距覆盖为 `0`，否则列步长会小于滚动步长，造成一屏跨两列、左右截断和内容错位。
+零间距由 EPUB.js 一并计算正文列宽、内边距和 `scrollLeft` 步长，因此每次翻页
+恰好移动一个可见页宽。不要只通过 CSS 把栏间距改成 `0`；CSS 与 EPUB.js
+布局参数不一致时，滚动步长会偏小，造成重复内容、右侧裁切或漏页。
+
+修改字号、行距、段距或版心后，EPUB.js 不会因为视口尺寸未变而自动重新分页。
+阅读器会先清理当前视图，再按当前 CFI 重新 display 一次，强制刷新列布局；
+视口尺寸变化时也会把 CFI 传给 `resize`，以保持当前位置。
 
 ### 键盘
 
@@ -115,6 +127,7 @@ visible page width = content column width + column gap
 - 焦点进入 EPUB iframe 后，由绑定在该文档上的非 passive `keydown` 处理。
 - 两处处理都调用同一组 `next`/`previous` 逻辑。
 - 不通过 EPUB.js 的 passive 事件代理调用 `preventDefault`。
+- 分页模式使用左右方向键、PageUp/PageDown 和空格；滚动模式额外支持上下方向键。
 
 ## TXT 实现
 
@@ -123,6 +136,7 @@ visible page width = content column width + column gap
 - 文本按段落边界分块，使用固定视口 CSS 多栏分页。
 - 阅读位置使用 JavaScript UTF-16 字符偏移。
 - 字号、窗口或设备变化后重新分页，并通过字符锚点恢复。
+- 上下滚动模式复用当前文本块，按视口高度滚动；跨块时从下一块开头继续，返回上一块时定位到上一块末尾。
 - 搜索返回绝对字符偏移和章节摘要。
 
 ## 主题系统

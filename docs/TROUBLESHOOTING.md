@@ -47,10 +47,10 @@ npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127
 正确关系：
 
 ```text
-page width = content column width + column gap
+page width = content column width (layout gap = 0)
 ```
 
-不要覆盖 EPUB.js 的 `column-gap`。正文左右 padding 会参与列宽计算；手动设为 0 会导致每列实际宽度小于滚动步长。
+当前实现把 `gap: 0` 传给 EPUB.js，而不是只覆盖 CSS。正文左右 padding 和滚动步长必须由同一个布局参数计算。
 
 正常情况下：
 
@@ -75,9 +75,14 @@ page width = content column width + column gap
 检查：
 
 - `column-gap` 是否被应用样式覆盖。
+- EPUB.js 的 `gap` 是否仍为 0，且与外层视口宽度一致。
 - 页面恢复是否落在页边界。
 - 是否同时触发了父页面和 iframe 的两次翻页。
 - 是否仍运行旧 JS bundle。
+
+如果切换到上下滚动后内容仍然不可见，检查 `.epub-container` 的
+`scrollHeight` 是否大于 `clientHeight`，以及阅读方式切换后是否创建了新的
+`rendition`。当前实现会在分页和滚动之间重建 rendition，以当前 CFI 恢复。
 
 翻页后 `.epub-container.scrollLeft` 应稳定按页宽递增或递减。
 

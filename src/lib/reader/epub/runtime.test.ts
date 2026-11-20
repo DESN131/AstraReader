@@ -59,4 +59,20 @@ describe("getEpubKeyboardDirection", () => {
       ),
     ).toBeNull();
   });
+
+  it("maps vertical scrolling keys only in scroll mode", () => {
+    const event = (key: string) => new KeyboardEvent("keydown", { key });
+
+    expect(getEpubKeyboardDirection(event("ArrowDown"))).toBeNull();
+    expect(getEpubKeyboardDirection(event("ArrowUp"))).toBeNull();
+    expect(
+      getEpubKeyboardDirection(event("ArrowDown"), "scroll"),
+    ).toBe("next");
+    expect(
+      getEpubKeyboardDirection(event("ArrowUp"), "scroll"),
+    ).toBe("previous");
+    expect(
+      getEpubKeyboardDirection(event("ArrowRight"), "scroll"),
+    ).toBe("next");
+  });
 });

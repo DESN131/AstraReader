@@ -23,15 +23,18 @@ export interface EpubRelocatedLocation {
 type EpubRenderOptions = NonNullable<Parameters<Book["renderTo"]>[1]>;
 
 export type EpubNavigationDirection = "next" | "previous";
+export type EpubReadingMode = "paginated" | "scroll";
 
 export function getEpubKeyboardDirection(
   event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">,
+  readingMode: EpubReadingMode = "paginated",
 ): EpubNavigationDirection | null {
   if (event.altKey || event.ctrlKey || event.metaKey) {
     return null;
   }
 
   if (
+    (readingMode === "scroll" && event.key === "ArrowDown") ||
     event.key === "ArrowRight" ||
     event.key === "PageDown" ||
     (event.key === " " && !event.shiftKey)
@@ -40,6 +43,7 @@ export function getEpubKeyboardDirection(
   }
 
   if (
+    (readingMode === "scroll" && event.key === "ArrowUp") ||
     event.key === "ArrowLeft" ||
     event.key === "PageUp" ||
     (event.key === " " && event.shiftKey)

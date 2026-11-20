@@ -41,6 +41,12 @@
   border-radius: 2px;
 }
 
+.astra-txt-viewport-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .astra-txt-content {
   box-sizing: border-box;
   width: 100%;
@@ -58,6 +64,14 @@
   column-gap: var(--txt-column-gap);
   user-select: text;
   -webkit-user-select: text;
+}
+
+.astra-txt-content-scroll {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+  column-fill: balance;
 }
 
 .astra-txt-paragraph,

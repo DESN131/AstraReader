@@ -148,4 +148,36 @@ describe("TxtReader", () => {
       }),
     );
   });
+
+  it("renders the vertical scroll surface without fixed columns", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      textResponse("第一章\n这是一段用于滚动阅读的文本。"),
+    );
+
+    const { findByRole, container } = render(
+      <TxtReader
+        book={BOOK}
+        initialLocation={null}
+        settings={{
+          ...DEFAULT_READER_SETTINGS,
+          animation: "scroll",
+        }}
+        onReady={vi.fn()}
+        onRelocated={vi.fn()}
+        onError={vi.fn()}
+      />,
+    );
+
+    const region = await findByRole("region", {
+      name: `${BOOK.title} 阅读区`,
+    });
+    expect(region).toHaveClass("astra-txt-viewport-scroll");
+    expect(
+      container.querySelector(".astra-txt-content-scroll"),
+    ).not.toBeNull();
+    expect(
+      container.querySelector<HTMLElement>(".astra-txt-content")
+        ?.style.columnWidth,
+    ).toBe("");
+  });
 });

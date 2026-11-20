@@ -39,6 +39,21 @@
   overflow: hidden;
 }
 
+.astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport {
+  overscroll-behavior: contain;
+}
+
+.astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport .epub-container {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport .epub-view {
+  width: 100% !important;
+}
+
 .astra-epub-viewport [class~="epub-container"],
 .astra-epub-viewport [class~="epub-view"] {
   background: transparent !important;

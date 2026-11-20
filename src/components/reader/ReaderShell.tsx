@@ -242,13 +242,21 @@ export function ReaderShell({ book }: ReaderShellProps) {
         return;
       }
 
-      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+      const scrollMode = settings.animation === "scroll";
+
+      if (
+        event.key === "ArrowLeft" ||
+        event.key === "PageUp" ||
+        (scrollMode && event.key === "ArrowUp") ||
+        (event.key === " " && event.shiftKey)
+      ) {
         event.preventDefault();
         goPrevious();
       } else if (
         event.key === "ArrowRight" ||
         event.key === "PageDown" ||
-        event.key === " "
+        (scrollMode && event.key === "ArrowDown") ||
+        (event.key === " " && !event.shiftKey)
       ) {
         event.preventDefault();
         goNext();
@@ -260,7 +268,7 @@ export function ReaderShell({ book }: ReaderShellProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [goNext, goPrevious]);
+  }, [goNext, goPrevious, settings.animation]);
 
   const handleSearch = useCallback(
     async (query: string, signal: AbortSignal) => {

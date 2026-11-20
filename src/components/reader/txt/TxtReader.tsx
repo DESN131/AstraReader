@@ -254,8 +254,9 @@ function offsetFromRange(
 
 function firstVisibleAtomOffset(
   content: HTMLElement,
+  viewport: HTMLElement = content,
 ): number | null {
-  const contentRect = content.getBoundingClientRect();
+  const contentRect = viewport.getBoundingClientRect();
   const atoms = content.querySelectorAll<HTMLElement>(
     "[data-source-atom]",
   );
@@ -339,6 +340,101 @@ function sourceOffsetAtPage(content: HTMLElement): number | null {
   }
 
   return firstVisibleAtomOffset(content);
+}
+
+function sourceOffsetAtViewport(
+  content: HTMLElement,
+  viewport: HTMLElement,
+): number | null {
+  const viewportRect = viewport.getBoundingClientRect();
+  const caretDocument = document as CaretRangeDocument;
+  const xPositions = [
+    viewportRect.left + 8,
+    viewportRect.left + Math.min(40, viewportRect.width * 0.15),
+    viewportRect.left + viewportRect.width * 0.3,
+  ];
+  const yPositions = [
+    viewportRect.top + 8,
+    viewportRect.top + 28,
+    viewportRect.top + viewportRect.height * 0.16,
+    viewportRect.top + viewportRect.height * 0.3,
+  ];
+
+  for (const y of yPositions) {
+    for (const x of xPositions) {
+      const range = caretDocument.caretRangeFromPoint?.(x, y);
+      if (range) {
+        const offset = offsetFromRange(range, content);
+        if (offset !== null) {
+          return offset;
+        }
+      }
+
+      const position = caretDocument.caretPositionFromPoint?.(x, y);
+      if (position) {
+        const pointRange = document.createRange();
+        pointRange.setStart(position.offsetNode, position.offset);
+        pointRange.collapse(true);
+        const offset = offsetFromRange(pointRange, content);
+        if (offset !== null) {
+          return offset;
+        }
+      }
+    }
+  }
+
+  return firstVisibleAtomOffset(content, viewport);
+}
+
+function scrollOffsetIntoView(
+  content: HTMLElement,
+  viewport: HTMLElement,
+  sourceOffset: number,
+): boolean {
+  const atoms = Array.from(
+    content.querySelectorAll<HTMLElement>("[data-source-atom]"),
+  );
+  if (atoms.length === 0) {
+    return false;
+  }
+
+  let matchingAtom = atoms[0];
+  let low = 0;
+  let high = atoms.length - 1;
+
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    const atom = atoms[middle];
+    const start = Number(atom.dataset.sourceStart);
+    const end = Number(atom.dataset.sourceEnd);
+
+    if (sourceOffset < start) {
+      high = middle - 1;
+    } else if (sourceOffset >= end) {
+      low = middle + 1;
+    } else {
+      matchingAtom = atom;
+      break;
+    }
+
+    if (low > high) {
+      matchingAtom = atoms[Math.min(atoms.length - 1, Math.max(0, low))];
+    }
+  }
+
+  const range = makeRangeForOffset(matchingAtom, sourceOffset);
+  if (!range || typeof range.getBoundingClientRect !== "function") {
+    return false;
+  }
+
+  const rect = range.getBoundingClientRect();
+  const viewportRect = viewport.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    return false;
+  }
+
+  viewport.scrollTop += rect.top - viewportRect.top - 12;
+  return true;
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -433,7 +529,7 @@ const TxtReaderImplementation = forwardRef<
 
   const callbacksRef = useRef({ onRelocated, onReady, onError });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     latestPropsRef.current = { initialLocation, settings };
     callbacksRef.current = { onRelocated, onReady, onError };
     activeChunkIndexRef.current = activeChunkIndex;
@@ -464,12 +560,17 @@ const TxtReaderImplementation = forwardRef<
 
   const notifyLocation = useCallback((force = false) => {
     const activeModel = modelRef.current;
+    const viewport = viewportRef.current;
     const content = contentRef.current;
-    if (!activeModel || !content) {
+    if (!activeModel || !viewport || !content) {
       return;
     }
 
-    const mappedOffset = sourceOffsetAtPage(content);
+    const scrollMode =
+      latestPropsRef.current.settings.animation === "scroll";
+    const mappedOffset = scrollMode
+      ? sourceOffsetAtViewport(content, viewport)
+      : sourceOffsetAtPage(content);
     const offset = Math.max(
       0,
       Math.min(
@@ -482,9 +583,12 @@ const TxtReaderImplementation = forwardRef<
       activeModel.chapters,
       offset,
     )?.id;
-    const atDocumentEnd =
-      activeChunkIndexRef.current === activeModel.chunks.length - 1 &&
-      pageRef.current === pageCountRef.current - 1;
+    const atDocumentEnd = scrollMode
+      ? activeChunkIndexRef.current === activeModel.chunks.length - 1 &&
+        viewport.scrollTop >=
+          viewport.scrollHeight - viewport.clientHeight - 2
+      : activeChunkIndexRef.current === activeModel.chunks.length - 1 &&
+        pageRef.current === pageCountRef.current - 1;
     const percentage =
       activeModel.text.length === 0 || atDocumentEnd
         ? 1
@@ -505,8 +609,19 @@ const TxtReaderImplementation = forwardRef<
 
   const restoreOffset = useCallback(
     (offset: number, forceNotify = false) => {
+      const viewport = viewportRef.current;
       const content = contentRef.current;
-      if (!content) {
+      if (!viewport || !content) {
+        return;
+      }
+
+      const scrollMode =
+        latestPropsRef.current.settings.animation === "scroll";
+
+      if (scrollMode) {
+        currentOffsetRef.current = offset;
+        scrollOffsetIntoView(content, viewport, offset);
+        notifyLocation(forceNotify);
         return;
       }
 
@@ -560,6 +675,7 @@ const TxtReaderImplementation = forwardRef<
     if (
       !viewport ||
       animation === "none" ||
+      animation === "scroll" ||
       typeof viewport.animate !== "function" ||
       window.matchMedia(REDUCED_MOTION_QUERY).matches
     ) {
@@ -693,6 +809,7 @@ const TxtReaderImplementation = forwardRef<
     model,
     restoreOffset,
     restorePendingPage,
+    settings.animation,
     settings.contentWidth,
     settings.fontFamily,
     settings.fontSize,
@@ -701,6 +818,38 @@ const TxtReaderImplementation = forwardRef<
     settings.textAlign,
     status,
   ]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (
+      status !== "ready" ||
+      !model ||
+      settings.animation !== "scroll" ||
+      !viewport
+    ) {
+      return;
+    }
+
+    let frame: number | null = null;
+    const handleScroll = () => {
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        notifyLocation();
+      });
+    };
+
+    viewport.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      viewport.removeEventListener("scroll", handleScroll);
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    };
+  }, [model, notifyLocation, settings.animation, status]);
 
   useEffect(() => {
     if (status !== "ready" || !model) {
@@ -753,9 +902,42 @@ const TxtReaderImplementation = forwardRef<
     () =>
       enqueueOperation(async () => {
         const activeModel = modelRef.current;
+        const viewport = viewportRef.current;
         const content = contentRef.current;
-        if (!activeModel || !content) {
+        if (!activeModel || !viewport || !content) {
           return false;
+        }
+
+        if (latestPropsRef.current.settings.animation === "scroll") {
+          const maxScrollTop = Math.max(
+            0,
+            viewport.scrollHeight - viewport.clientHeight,
+          );
+          const step = Math.max(120, Math.round(viewport.clientHeight * 0.88));
+
+          if (viewport.scrollTop < maxScrollTop - 1) {
+            viewport.scrollTop = Math.min(
+              maxScrollTop,
+              viewport.scrollTop + step,
+            );
+            await nextFrame();
+            notifyLocation();
+            return true;
+          }
+
+          const nextChunkIndex = activeChunkIndexRef.current + 1;
+          const nextChunk = activeModel.chunks[nextChunkIndex];
+          if (!nextChunk) {
+            return false;
+          }
+
+          currentOffsetRef.current = nextChunk.start;
+          activeChunkIndexRef.current = nextChunkIndex;
+          pendingPageRef.current = null;
+          setActiveChunkIndex(nextChunkIndex);
+          await waitForReaderLayout();
+          notifyLocation();
+          return true;
         }
 
         const metrics = readPageMetrics(content);
@@ -798,9 +980,40 @@ const TxtReaderImplementation = forwardRef<
     () =>
       enqueueOperation(async () => {
         const activeModel = modelRef.current;
+        const viewport = viewportRef.current;
         const content = contentRef.current;
-        if (!activeModel || !content) {
+        if (!activeModel || !viewport || !content) {
           return false;
+        }
+
+        if (latestPropsRef.current.settings.animation === "scroll") {
+          if (viewport.scrollTop > 1) {
+            viewport.scrollTop = Math.max(
+              0,
+              viewport.scrollTop -
+                Math.max(120, Math.round(viewport.clientHeight * 0.88)),
+            );
+            await nextFrame();
+            notifyLocation();
+            return true;
+          }
+
+          const previousChunkIndex = activeChunkIndexRef.current - 1;
+          const previousChunk = activeModel.chunks[previousChunkIndex];
+          if (!previousChunk) {
+            return false;
+          }
+
+          currentOffsetRef.current = Math.max(
+            previousChunk.start,
+            previousChunk.end - 1,
+          );
+          activeChunkIndexRef.current = previousChunkIndex;
+          pendingPageRef.current = null;
+          setActiveChunkIndex(previousChunkIndex);
+          await waitForReaderLayout();
+          notifyLocation();
+          return true;
         }
 
         const metrics = readPageMetrics(content);
@@ -938,10 +1151,14 @@ const TxtReaderImplementation = forwardRef<
       const pageDown =
         event.key === "PageDown" ||
         event.key === "ArrowRight" ||
+        (latestPropsRef.current.settings.animation === "scroll" &&
+          event.key === "ArrowDown") ||
         (event.key === " " && !event.shiftKey);
       const pageUp =
         event.key === "PageUp" ||
         event.key === "ArrowLeft" ||
+        (latestPropsRef.current.settings.animation === "scroll" &&
+          event.key === "ArrowUp") ||
         (event.key === " " && event.shiftKey);
 
       if (pageDown) {
@@ -1099,9 +1316,14 @@ const TxtReaderImplementation = forwardRef<
     "--txt-text-align": settings.textAlign,
     "--txt-column-gap": `${DEFAULT_GAP}px`,
   } as CSSProperties;
+  const scrollMode = settings.animation === "scroll";
 
   return (
-    <div className="astra-txt-root" style={readerVariables}>
+    <div
+      className="astra-txt-root"
+      data-reading-mode={scrollMode ? "scroll" : "paginated"}
+      style={readerVariables}
+    >
       <div className="astra-txt-stage">
         {status === "loading" ? (
           <div className="astra-txt-state" role="status">
@@ -1129,7 +1351,10 @@ const TxtReaderImplementation = forwardRef<
         {status === "ready" && model ? (
           <div
             ref={viewportRef}
-            className="astra-txt-viewport"
+            className={cn(
+              "astra-txt-viewport",
+              scrollMode && "astra-txt-viewport-scroll",
+            )}
             role="region"
             aria-label={`${book.title} 阅读区`}
             tabIndex={0}
@@ -1145,8 +1370,13 @@ const TxtReaderImplementation = forwardRef<
               className={cn(
                 "astra-txt-content",
                 isCjkContent && "astra-txt-cjk-content",
+                scrollMode && "astra-txt-content-scroll",
               )}
-              style={{ columnWidth: `${settings.contentWidth}px` }}
+              style={
+                scrollMode
+                  ? undefined
+                  : { columnWidth: `${settings.contentWidth}px` }
+              }
             >
               {blocks.map((block) => (
                 <RenderBlock

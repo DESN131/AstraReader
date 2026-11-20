@@ -80,6 +80,7 @@ npm test
 
 - TXT 编码、章节、分块、搜索和字符锚点。
 - EPUB 导航、主题、搜索、位置和键盘映射。
+- EPUB 分页/滚动键盘映射和 TXT 滚动布局。
 - VS Code 深灰主题和设置归一化。
 - 通用格式化函数。
 
@@ -108,6 +109,10 @@ npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127
 - iframe 内的左右键只翻一页。
 - 翻页后章节标题不意外变化。
 - 连续右翻再左翻能回到同一位置。
+- 分页模式下检查 `scrollWidth` 是视口宽度的整数倍，连续翻页不重复或裁切。
+- 切换到上下滚动后，内容可滚动，方向键和工具栏按钮按视口移动。
+- 修改字号、行距和版心后，正文和外层分页容器一起重排。
+- 切回分页模式后仍能从当前章节继续阅读。
 - 书架、阅读页和目录抽屉主题一致。
 - 移动端目录抽屉可用。
 
@@ -115,13 +120,15 @@ npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127
 
 ### 分页宽度
 
-EPUB.js 的分页步长必须等于真实列步长：
+EPUB.js 的分页步长必须等于真实列步长。当前实现把 `gap: 0` 交给
+EPUB.js，分页步长与可见视口宽度一致：
 
 ```text
-layout width = content column width + column gap
+layout width = content column width + 0
 ```
 
-不要强制把 `column-gap` 设为 `0`。正文有左右 padding 时，这会改变实际列宽，导致滚页跨度与列跨度不一致。
+不要只通过 CSS 覆盖 `column-gap`。CSS 与 EPUB.js 的布局参数不一致时，滚页
+跨度会与列跨度不一致，造成重复、裁切或漏页。
 
 ### 键盘焦点
 

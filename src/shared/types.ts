@@ -84,7 +84,7 @@ export interface TocItem {
 }
 
 export type ReaderFontFamily = "sans" | "serif" | "kai";
-export type ReaderAnimation = "slide" | "fade" | "none";
+export type ReaderAnimation = "slide" | "fade" | "none" | "scroll";
 export type ReaderTextAlign = "left" | "justify";
 export type ReaderThemeId =
   | "paper"

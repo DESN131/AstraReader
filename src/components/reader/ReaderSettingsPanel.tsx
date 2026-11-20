@@ -34,6 +34,7 @@ const animationOptions: Array<{ value: ReaderAnimation; label: string }> = [
   { value: "slide", label: "滑动" },
   { value: "fade", label: "淡入" },
   { value: "none", label: "关闭" },
+  { value: "scroll", label: "上下滚动" },
 ];
 
 const alignOptions: Array<{ value: ReaderTextAlign; label: string }> = [
@@ -68,7 +69,7 @@ export function ReaderSettingsPanel({
             </Dialog.Close>
           </div>
           <Dialog.Description className="sr-only">
-            调整字体、行距、版面、主题和翻页动画。
+            调整字体、行距、版面、主题和翻页方式。
           </Dialog.Description>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
@@ -170,7 +171,7 @@ export function ReaderSettingsPanel({
               </SettingGroup>
             ) : null}
 
-            <SettingGroup label="翻页动画">
+            <SettingGroup label="翻页方式">
               <Segmented
                 value={settings.animation}
                 options={animationOptions}

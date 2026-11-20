@@ -34,4 +34,13 @@ describe("reader themes", () => {
     expect(settings.themeId).toBe("paper");
     expect(settings.fontSize).toBe(32);
   });
+
+  it("preserves the vertical scroll reading mode", () => {
+    const settings = normalizeReaderSettings({
+      ...DEFAULT_READER_SETTINGS,
+      animation: "scroll",
+    });
+
+    expect(settings.animation).toBe("scroll");
+  });
 });

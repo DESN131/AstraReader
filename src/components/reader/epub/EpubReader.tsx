@@ -39,6 +39,7 @@ import {
   toEpubReadingLocation,
   toError,
   type EpubRelocatedLocation,
+  type EpubReadingMode,
 } from "@/lib/reader/epub/runtime";
 import { searchEpubBook } from "@/lib/reader/epub/search";
 import {
@@ -60,6 +61,8 @@ interface ReaderCallbacks {
 
 interface EpubReaderSession {
   disposed: boolean;
+  readingMode: EpubReadingMode;
+  host: HTMLElement;
   book: Book | null;
   rendition: Rendition | null;
   toc: TocItem[];
@@ -71,13 +74,20 @@ interface EpubReaderSession {
   resizeObserver: ResizeObserver | null;
   resizeFrame: number | null;
   reflowTimer: number | null;
+  reflowing: boolean;
+  reflowPending: boolean;
   detachListeners: (() => void) | null;
   displayed: boolean;
 }
 
-function createSession(): EpubReaderSession {
+function createSession(
+  readingMode: EpubReadingMode,
+  host: HTMLElement,
+): EpubReaderSession {
   return {
     disposed: false,
+    readingMode,
+    host,
     book: null,
     rendition: null,
     toc: [],
@@ -89,6 +99,8 @@ function createSession(): EpubReaderSession {
     resizeObserver: null,
     resizeFrame: null,
     reflowTimer: null,
+    reflowing: false,
+    reflowPending: false,
     detachListeners: null,
     displayed: false,
   };
@@ -128,6 +140,16 @@ function measureViewport(element: HTMLElement): {
   };
 }
 
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+function getEpubScroller(session: EpubReaderSession): HTMLElement | null {
+  return session.host.querySelector<HTMLElement>(".epub-container");
+}
+
 function applyTheme(rendition: Rendition, settings: ReaderSettings) {
   rendition.themes.registerRules(
     "astra-reader",
@@ -140,7 +162,23 @@ function scheduleResize(
   session: EpubReaderSession,
   element: HTMLElement,
 ) {
-  if (session.disposed || !session.rendition || !session.displayed) {
+  if (
+    session.disposed ||
+    !session.rendition ||
+    !session.displayed
+  ) {
+    return;
+  }
+
+  if (session.reflowing) {
+    session.reflowPending = true;
+    return;
+  }
+
+  if (
+    session.readingMode === "scroll" &&
+    !session.currentLocation?.start?.cfi
+  ) {
     return;
   }
 
@@ -157,7 +195,17 @@ function scheduleResize(
 
     const { width, height } = measureViewport(element);
     try {
-      session.rendition.resize(width, height);
+      const resize = session.rendition.resize as (
+        width: number,
+        height: number,
+        cfi?: string,
+      ) => void;
+      resize.call(
+        session.rendition,
+        width,
+        height,
+        session.currentLocation?.start?.cfi,
+      );
     } catch (error) {
       console.warn("[AstraReader] EPUB resize deferred", error);
     }
@@ -167,6 +215,7 @@ function scheduleResize(
 function scheduleThemeReflow(
   session: EpubReaderSession,
   element: HTMLElement,
+  callbacks: ReaderCallbacks,
 ) {
   if (session.disposed || !session.rendition || !session.displayed) {
     return;
@@ -178,29 +227,87 @@ function scheduleThemeReflow(
 
   session.reflowTimer = window.setTimeout(() => {
     session.reflowTimer = null;
-    void reflowAtCurrentLocation(session, element);
+    void reflowAtCurrentLocation(session, element, callbacks).catch(
+      (error: unknown) => {
+        if (!session.disposed) {
+          callbacks.onError(
+            toError(error, "EPUB 重新排版失败"),
+          );
+        }
+      },
+    );
   }, 40);
 }
 
 async function reflowAtCurrentLocation(
   session: EpubReaderSession,
   element: HTMLElement,
+  callbacks: ReaderCallbacks,
 ) {
-  if (session.disposed || !session.rendition || !session.displayed) {
+  if (
+    session.disposed ||
+    !session.rendition ||
+    !session.displayed ||
+    session.reflowing
+  ) {
+    return;
+  }
+
+  if (
+    session.readingMode === "scroll" &&
+    !session.currentLocation?.start?.cfi
+  ) {
+    return;
+  }
+
+  const location =
+    session.currentLocation ??
+    (await getCurrentEpubLocation(session.rendition));
+
+  if (!location?.start?.cfi) {
     return;
   }
 
   const { width, height } = measureViewport(element);
-  const location =
-    session.currentLocation ??
-    (await getCurrentEpubLocation(session.rendition));
-  const resize = session.rendition.resize as (
-    width: number,
-    height: number,
-    cfi?: string,
-  ) => void;
+  const rendition = session.rendition;
+  session.reflowing = true;
 
-  resize.call(session.rendition, width, height, location?.start?.cfi);
+  try {
+    await enqueueNavigation(session, async () => {
+      const resize = rendition.resize as (
+        width: number,
+        height: number,
+        cfi?: string,
+      ) => void;
+
+      resize.call(rendition, width, height, location.start?.cfi);
+      await nextFrame();
+      rendition.clear();
+
+      try {
+        await rendition.display(location.start?.cfi ?? "");
+      } catch {
+        if (
+          !location.start?.href ||
+          location.start.href === location.start.cfi
+        ) {
+          throw new Error("EPUB 重新排版失败");
+        }
+        await rendition.display(location.start.href);
+      }
+
+      await rendition.reportLocation();
+      const current = await getCurrentEpubLocation(rendition);
+      emitLocation(session, callbacks, current);
+    });
+  } finally {
+    session.reflowing = false;
+
+    if (session.reflowPending) {
+      session.reflowPending = false;
+      scheduleThemeReflow(session, element, callbacks);
+    }
+  }
 }
 
 function animateSurface(
@@ -211,6 +318,7 @@ function animateSurface(
   if (
     !paper ||
     settings.animation === "none" ||
+    settings.animation === "scroll" ||
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
   ) {
     return;
@@ -302,10 +410,55 @@ async function moveSession(
 
   const before = await getCurrentEpubLocation(session.rendition);
 
+  if (session.readingMode === "scroll") {
+    const scroller = getEpubScroller(session);
+
+    if (scroller) {
+      const maxScrollTop = Math.max(
+        0,
+        scroller.scrollHeight - scroller.clientHeight,
+      );
+      const step = Math.max(160, Math.round(scroller.clientHeight * 0.88));
+
+      if (
+        direction === "next" &&
+        scroller.scrollTop < maxScrollTop - 1
+      ) {
+        scroller.scrollTop = Math.min(
+          maxScrollTop,
+          scroller.scrollTop + step,
+        );
+        await nextFrame();
+        await session.rendition.reportLocation();
+        const current = await getCurrentEpubLocation(session.rendition);
+        if (current) {
+          session.currentLocation = current;
+        }
+        return true;
+      }
+
+      if (direction === "previous" && scroller.scrollTop > 1) {
+        scroller.scrollTop = Math.max(0, scroller.scrollTop - step);
+        await nextFrame();
+        await session.rendition.reportLocation();
+        const current = await getCurrentEpubLocation(session.rendition);
+        if (current) {
+          session.currentLocation = current;
+        }
+        return true;
+      }
+    }
+  }
+
   if (direction === "next") {
     await session.rendition.next();
   } else {
     await session.rendition.prev();
+  }
+
+  if (session.readingMode === "scroll") {
+    await nextFrame();
+    await session.rendition.reportLocation();
   }
 
   const after = await getCurrentEpubLocation(session.rendition);
@@ -347,6 +500,8 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
     const [retryKey, setRetryKey] = useState(0);
 
     const bookId = book.id;
+    const readingMode: EpubReadingMode =
+      settings.animation === "scroll" ? "scroll" : "paginated";
 
     useEffect(() => {
       callbacksRef.current = { onRelocated, onReady, onError };
@@ -366,7 +521,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
       }
 
       applyTheme(session.rendition, settings);
-      scheduleThemeReflow(session, host);
+      scheduleThemeReflow(session, host, callbacksRef.current);
     }, [settings]);
 
     useEffect(() => {
@@ -377,7 +532,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
       }
 
       const controller = new AbortController();
-      const session = createSession();
+      const session = createSession(readingMode, host);
       sessionRef.current = session;
       setStatus("loading");
       setErrorMessage("");
@@ -434,13 +589,15 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
             height: initialSize.height,
             manager: "default",
             view: "iframe",
-            flow: "paginated",
+            flow: readingMode === "scroll" ? "scrolled" : "paginated",
             spread: "none",
+            gap: 0,
             allowScriptedContent: false,
             allowPopups: false,
             resizeOnOrientationChange: true,
           } as Parameters<Book["renderTo"]>[1] & {
             allowPopups: boolean;
+            gap: number;
           });
 
           session.rendition = rendition;
@@ -461,7 +618,10 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
             );
           };
           const handleKeyDown = (event: KeyboardEvent) => {
-            const direction = getEpubKeyboardDirection(event);
+            const direction = getEpubKeyboardDirection(
+              event,
+              session.readingMode,
+            );
             if (!direction) {
               return;
             }
@@ -570,12 +730,14 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           }
 
           session.displayed = true;
-          scheduleResize(session, host);
+          await rendition.reportLocation();
+          await nextFrame();
 
           const current =
             (await getCurrentEpubLocation(rendition)) ??
             session.currentLocation;
           emitLocation(session, callbacksRef.current, current);
+          scheduleResize(session, host);
           setStatus("ready");
 
           if (readyBookRef.current !== bookId) {
@@ -621,6 +783,14 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
       session.ready = initialize();
 
       return () => {
+        const preservedLocation = toEpubReadingLocation(
+          session.currentLocation,
+        );
+
+        if (preservedLocation) {
+          initialLocationRef.current = preservedLocation;
+        }
+
         session.disposed = true;
         controller.abort();
 
@@ -645,7 +815,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           sessionRef.current = null;
         }
       };
-    }, [bookId, retryKey]);
+    }, [bookId, readingMode, retryKey]);
 
     useImperativeHandle(
       ref,
@@ -795,6 +965,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
     return (
       <div
         className="astra-epub-root"
+        data-reading-mode={readingMode}
         style={surfaceStyle}
         aria-label="EPUB 阅读区"
         aria-busy={status === "loading"}

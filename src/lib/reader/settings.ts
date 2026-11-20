@@ -25,7 +25,12 @@ const THEME_IDS = new Set<ReaderThemeId>([
   "custom",
 ]);
 const FONT_FAMILIES = new Set<ReaderFontFamily>(["sans", "serif", "kai"]);
-const ANIMATIONS = new Set<ReaderAnimation>(["slide", "fade", "none"]);
+const ANIMATIONS = new Set<ReaderAnimation>([
+  "slide",
+  "fade",
+  "none",
+  "scroll",
+]);
 const TEXT_ALIGNS = new Set<ReaderTextAlign>(["left", "justify"]);
 
 function clamp(value: number, min: number, max: number): number {
