@@ -13,9 +13,21 @@ afterEach(() => {
 });
 
 describe("renderEpubWithoutUnload", () => {
-  it("filters only the obsolete EPUB.js unload listener", () => {
+  it("filters the obsolete EPUB.js unload listener during startup and display", async () => {
     const element = document.createElement("div");
-    const rendition = {} as Rendition;
+    let resolveStarted: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      resolveStarted = resolve;
+    });
+    let displayUnloadCalled = false;
+    const rendition = {
+      started,
+      display: vi.fn(async () => {
+        window.addEventListener("unload", () => {
+          displayUnloadCalled = true;
+        });
+      }),
+    } as unknown as Rendition;
     let unloadCalled = false;
     let resizeCalled = false;
     const book = {
@@ -39,6 +51,19 @@ describe("renderEpubWithoutUnload", () => {
     window.dispatchEvent(new Event("resize"));
     expect(unloadCalled).toBe(false);
     expect(resizeCalled).toBe(true);
+
+    resolveStarted();
+    await started;
+    await Promise.resolve();
+    await result.display();
+    expect(displayUnloadCalled).toBe(false);
+
+    let unloadAfterStartup = false;
+    window.addEventListener("unload", () => {
+      unloadAfterStartup = true;
+    });
+    window.dispatchEvent(new Event("unload"));
+    expect(unloadAfterStartup).toBe(true);
   });
 });
 

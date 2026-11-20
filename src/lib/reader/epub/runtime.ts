@@ -25,6 +25,44 @@ type EpubRenderOptions = NonNullable<Parameters<Book["renderTo"]>[1]>;
 export type EpubNavigationDirection = "next" | "previous";
 export type EpubReadingMode = "paginated" | "scroll";
 
+let unloadFilterDepth = 0;
+let originalWindowAddEventListener: typeof window.addEventListener | null =
+  null;
+
+function beginEpubUnloadFilter(): void {
+  if (unloadFilterDepth === 0) {
+    originalWindowAddEventListener = window.addEventListener;
+    window.addEventListener = function filteredAddEventListener(
+      this: Window,
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      eventOptions?: boolean | AddEventListenerOptions,
+    ) {
+      if (type === "unload") {
+        return;
+      }
+
+      return originalWindowAddEventListener?.call(
+        this,
+        type,
+        listener,
+        eventOptions,
+      );
+    } as typeof window.addEventListener;
+  }
+
+  unloadFilterDepth += 1;
+}
+
+function endEpubUnloadFilter(): void {
+  unloadFilterDepth = Math.max(0, unloadFilterDepth - 1);
+
+  if (unloadFilterDepth === 0 && originalWindowAddEventListener) {
+    window.addEventListener = originalWindowAddEventListener;
+    originalWindowAddEventListener = null;
+  }
+}
+
 export function getEpubKeyboardDirection(
   event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">,
   readingMode: EpubReadingMode = "paginated",
@@ -59,34 +97,32 @@ export function renderEpubWithoutUnload(
   element: Element,
   options?: EpubRenderOptions,
 ): Rendition {
-  const originalAddEventListener = window.addEventListener;
-
   // EPUB.js 0.3 registers an obsolete window unload listener on every
   // rendition. Chrome's Permissions Policy now rejects that listener.
-  // Rendition construction is synchronous, so suppress it only during this
-  // call and keep application cleanup on pagehide/unmount instead.
-  window.addEventListener = function filteredAddEventListener(
-    this: Window,
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    eventOptions?: boolean | AddEventListenerOptions,
-  ) {
-    if (type === "unload") {
-      return;
-    }
-
-    return originalAddEventListener.call(
-      this,
-      type,
-      listener,
-      eventOptions,
-    );
-  } as typeof window.addEventListener;
+  // EPUB.js creates and renders the manager asynchronously after renderTo
+  // returns. Keep the filter active through startup and display calls.
+  // Application cleanup remains on pagehide and component unmount.
+  beginEpubUnloadFilter();
 
   try {
-    return book.renderTo(element, options);
-  } finally {
-    window.addEventListener = originalAddEventListener;
+    const rendition = book.renderTo(element, options);
+    rendition.started.then(endEpubUnloadFilter, endEpubUnloadFilter);
+    const originalDisplay = rendition.display.bind(rendition) as (
+      target?: string | number,
+    ) => Promise<void>;
+    rendition.display = async (target?: string | number) => {
+      beginEpubUnloadFilter();
+
+      try {
+        await originalDisplay(target);
+      } finally {
+        endEpubUnloadFilter();
+      }
+    };
+    return rendition;
+  } catch (error) {
+    endEpubUnloadFilter();
+    throw error;
   }
 }
 
