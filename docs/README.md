@@ -10,6 +10,7 @@
 4. [部署、备份与升级](DEPLOYMENT.md)：Windows 本地生产运行和运维步骤。
 5. [故障排查](TROUBLESHOOTING.md)：常见症状、诊断命令和修复方式。
 6. [变更记录](CHANGELOG.md)：功能阶段和重要修复。
+7. [EPUB 内容完整性审计](CONTENT-AUDIT.md)：书脊正文与阅读器渲染结果的全量对比。
 
 ## 文档状态
 
@@ -22,6 +23,7 @@
 | `DEPLOYMENT.md` | 生产启动、网络安全、备份、恢复和升级 |
 | `TROUBLESHOOTING.md` | 按症状定位问题 |
 | `CHANGELOG.md` | 阶段性变更和关键修复 |
+| `CONTENT-AUDIT.md` | 原始 EPUB 与阅读器渲染内容的完整性审计 |
 
 ## 事实来源
 
