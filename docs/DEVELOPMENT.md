@@ -17,7 +17,7 @@ npm run dev
 ## 环境变量
 
 ```powershell
-$env:ASTRAREADER_DATA_DIR = "E:\AstraReaderData"
+$env:ASTRAREADER_DATA_DIR = "$env:USERPROFILE\AstraReaderData"
 $env:ASTRAREADER_MAX_UPLOAD_MB = "500"
 $env:PORT = "3000"
 npm run dev

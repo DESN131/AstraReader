@@ -88,6 +88,7 @@ npm start
 - [开发与测试指南](docs/DEVELOPMENT.md)
 - [部署、备份与升级](docs/DEPLOYMENT.md)
 - [故障排查](docs/TROUBLESHOOTING.md)
+- [发布到 GitHub 前的隐私检查](docs/GITHUB.md)
 - [变更记录](docs/CHANGELOG.md)
 
 ## 当前限制

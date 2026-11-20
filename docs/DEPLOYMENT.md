@@ -42,7 +42,7 @@ next start --hostname 0.0.0.0 --port 3000
 推荐把数据目录放到稳定磁盘：
 
 ```powershell
-$env:ASTRAREADER_DATA_DIR = "E:\AstraReaderData"
+$env:ASTRAREADER_DATA_DIR = "$env:USERPROFILE\AstraReaderData"
 $env:PORT = "3000"
 npm start
 ```
@@ -96,8 +96,8 @@ Get-NetTCPConnection -LocalPort 3000 -State Listen
 2. 复制整个数据目录。
 
 ```powershell
-$source = "E:\AstraReaderData"
-$backup = "E:\AstraReaderBackup-2026-11-19"
+$source = "$env:USERPROFILE\AstraReaderData"
+$backup = "$env:USERPROFILE\AstraReaderBackup-$(Get-Date -Format yyyyMMdd-HHmmss)"
 Copy-Item -LiteralPath $source -Destination $backup -Recurse
 ```
 

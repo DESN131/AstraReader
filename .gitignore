@@ -23,6 +23,17 @@
 # misc
 .DS_Store
 *.pem
+.vscode/
+.idea/
+*.local
+
+# common book/database artifacts
+*.epub
+*.pdf
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
 
 # debug
 npm-debug.log*
