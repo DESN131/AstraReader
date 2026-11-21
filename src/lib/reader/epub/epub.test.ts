@@ -95,6 +95,8 @@ describe("EPUB theme", () => {
     expect(getEpubContentWidth(settings)).toBe(980);
     expect(rules.body["font-size"]).toBe("23px !important");
     expect(rules.body["line-height"]).toBe("2 !important");
+    expect(rules.body["padding-left"]).toBe("16px !important");
+    expect(rules.body["padding-right"]).toBe("16px !important");
     expect(rules["body p"]["margin-bottom"]).toBe("1.1em !important");
     expect(surface["--epub-content-width" as keyof typeof surface]).toBe(
       "980px",

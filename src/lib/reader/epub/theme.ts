@@ -80,6 +80,8 @@ export function createEpubThemeRules(
       "font-family": `${fontStack} !important`,
       "font-size": `${fontSize}px !important`,
       "line-height": `${lineHeight} !important`,
+      "padding-left": "16px !important",
+      "padding-right": "16px !important",
       "text-align": `${textAlign} !important`,
       "text-justify": "inter-ideograph",
       "overflow-wrap": "break-word",

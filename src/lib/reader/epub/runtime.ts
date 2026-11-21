@@ -20,6 +20,12 @@ export interface EpubRelocatedLocation {
   atEnd?: boolean;
 }
 
+export interface EpubScrollbarThumbGeometry {
+  visible: boolean;
+  thumbHeight: number;
+  thumbTop: number;
+}
+
 type EpubRenderOptions = NonNullable<Parameters<Book["renderTo"]>[1]>;
 
 export type EpubNavigationDirection = "next" | "previous";
@@ -90,6 +96,51 @@ export function getEpubKeyboardDirection(
   }
 
   return null;
+}
+
+export function getEpubScrollbarThumbGeometry({
+  scrollTop,
+  scrollHeight,
+  clientHeight,
+  trackHeight,
+  minThumbHeight = 32,
+}: {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+  trackHeight: number;
+  minThumbHeight?: number;
+}): EpubScrollbarThumbGeometry {
+  const safeClientHeight = Math.max(0, clientHeight);
+  const safeScrollHeight = Math.max(safeClientHeight, scrollHeight);
+  const safeTrackHeight = Math.max(0, trackHeight);
+  const maxScrollTop = safeScrollHeight - safeClientHeight;
+
+  if (maxScrollTop <= 1 || safeTrackHeight <= 0) {
+    return {
+      visible: false,
+      thumbHeight: safeTrackHeight,
+      thumbTop: 0,
+    };
+  }
+
+  const proportionalHeight =
+    safeTrackHeight * (safeClientHeight / safeScrollHeight);
+  const thumbHeight = Math.min(
+    safeTrackHeight,
+    Math.max(minThumbHeight, proportionalHeight),
+  );
+  const maxThumbTop = Math.max(0, safeTrackHeight - thumbHeight);
+  const progress = Math.min(
+    1,
+    Math.max(0, scrollTop / maxScrollTop),
+  );
+
+  return {
+    visible: true,
+    thumbHeight,
+    thumbTop: progress * maxThumbTop,
+  };
 }
 
 export function renderEpubWithoutUnload(

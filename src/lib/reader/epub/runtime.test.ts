@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   getEpubKeyboardDirection,
+  getEpubScrollbarThumbGeometry,
   renderEpubWithoutUnload,
 } from "./runtime";
 
@@ -99,5 +100,48 @@ describe("getEpubKeyboardDirection", () => {
     expect(
       getEpubKeyboardDirection(event("ArrowRight"), "scroll"),
     ).toBe("next");
+  });
+});
+
+describe("getEpubScrollbarThumbGeometry", () => {
+  it("hides the thumb when the content does not overflow", () => {
+    expect(
+      getEpubScrollbarThumbGeometry({
+        scrollTop: 0,
+        scrollHeight: 600,
+        clientHeight: 600,
+        trackHeight: 500,
+      }),
+    ).toEqual({
+      visible: false,
+      thumbHeight: 500,
+      thumbTop: 0,
+    });
+  });
+
+  it("maps scroll progress to the available thumb travel", () => {
+    const geometry = getEpubScrollbarThumbGeometry({
+      scrollTop: 300,
+      scrollHeight: 1_200,
+      clientHeight: 600,
+      trackHeight: 500,
+    });
+
+    expect(geometry.visible).toBe(true);
+    expect(geometry.thumbHeight).toBe(250);
+    expect(geometry.thumbTop).toBe(125);
+  });
+
+  it("keeps a minimum thumb height and clamps progress", () => {
+    const geometry = getEpubScrollbarThumbGeometry({
+      scrollTop: 10_000,
+      scrollHeight: 10_000,
+      clientHeight: 200,
+      trackHeight: 400,
+    });
+
+    expect(geometry.visible).toBe(true);
+    expect(geometry.thumbHeight).toBe(32);
+    expect(geometry.thumbTop).toBe(368);
   });
 });

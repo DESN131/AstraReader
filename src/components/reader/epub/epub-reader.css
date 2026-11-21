@@ -42,9 +42,6 @@
 }
 
 .astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport {
-  width: calc(100% - var(--epub-page-inset));
-  margin-left: var(--epub-page-inset);
-  margin-right: 0;
   overscroll-behavior: contain;
 }
 
@@ -52,11 +49,74 @@
   overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+  -ms-overflow-style: none;
+}
+
+.astra-epub-root[data-reading-mode="scroll"]
+  .astra-epub-viewport
+  .epub-container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport .epub-view {
   width: 100% !important;
+}
+
+.astra-epub-scrollbar {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 1px;
+  bottom: 8px;
+  width: 10px;
+  opacity: 0;
+  pointer-events: none;
+  touch-action: none;
+  transition: opacity 140ms ease;
+}
+
+.astra-epub-scrollbar[data-visible="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.astra-epub-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 1px;
+  width: 6px;
+  min-height: 32px;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--epub-muted, #737068) 62%,
+    transparent
+  );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--epub-background) 55%, transparent);
+  cursor: grab;
+  will-change: transform, height;
+  transition:
+    width 120ms ease,
+    right 120ms ease,
+    background-color 120ms ease;
+}
+
+.astra-epub-scrollbar:hover .astra-epub-scrollbar-thumb,
+.astra-epub-scrollbar-thumb:active {
+  right: 0;
+  width: 8px;
+  background: color-mix(
+    in srgb,
+    var(--epub-foreground, #24231f) 55%,
+    transparent
+  );
+}
+
+.astra-epub-scrollbar-thumb:active {
+  cursor: grabbing;
 }
 
 .astra-epub-viewport [class~="epub-container"],

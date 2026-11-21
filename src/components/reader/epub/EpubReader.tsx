@@ -33,6 +33,7 @@ import {
   getCurrentEpubLocation,
   getEpubPercentage,
   getEpubKeyboardDirection,
+  getEpubScrollbarThumbGeometry,
   readEpubApiError,
   renderEpubWithoutUnload,
   toEpubReadingLocation,
@@ -625,6 +626,8 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
   ) {
     const hostRef = useRef<HTMLDivElement>(null);
     const paperRef = useRef<HTMLDivElement>(null);
+    const scrollbarRef = useRef<HTMLDivElement>(null);
+    const scrollbarThumbRef = useRef<HTMLDivElement>(null);
     const sessionRef = useRef<EpubReaderSession | null>(null);
     const callbacksRef = useRef<ReaderCallbacks>({
       onRelocated,
@@ -932,6 +935,236 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
       };
     }, [bookId, readingMode, retryKey]);
 
+    useEffect(() => {
+      if (readingMode !== "scroll" || status !== "ready") {
+        return;
+      }
+
+      const host = hostRef.current;
+      const rail = scrollbarRef.current;
+      const thumb = scrollbarThumbRef.current;
+
+      if (!host || !rail || !thumb) {
+        return;
+      }
+
+      const hostElement = host;
+      const railElement = rail;
+      const thumbElement = thumb;
+      let scroller: HTMLElement | null = null;
+      let animationFrame = 0;
+      let drag:
+        | {
+            pointerId: number;
+            startY: number;
+            startScrollTop: number;
+          }
+        | null = null;
+
+      function getScroller(): HTMLElement | null {
+        return hostElement.querySelector<HTMLElement>(".epub-container");
+      }
+
+      function updateScrollbar(): void {
+        animationFrame = 0;
+        const current = getScroller();
+
+        if (current !== scroller) {
+          scroller?.removeEventListener("scroll", scheduleScrollbarUpdate);
+          scroller = current;
+          scroller?.addEventListener("scroll", scheduleScrollbarUpdate, {
+            passive: true,
+          });
+        }
+
+        if (!scroller) {
+          railElement.dataset.visible = "false";
+          return;
+        }
+
+        const geometry = getEpubScrollbarThumbGeometry({
+          scrollTop: scroller.scrollTop,
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight,
+          trackHeight: railElement.clientHeight,
+        });
+
+        railElement.dataset.visible = String(geometry.visible);
+        thumbElement.style.height = `${geometry.thumbHeight}px`;
+        thumbElement.style.transform = `translateY(${geometry.thumbTop}px)`;
+      }
+
+      function scheduleScrollbarUpdate(): void {
+        if (!animationFrame) {
+          animationFrame = window.requestAnimationFrame(updateScrollbar);
+        }
+      }
+
+      function setScrollFromPointer(clientY: number): void {
+        if (!scroller) {
+          return;
+        }
+
+        const maxScrollTop = Math.max(
+          0,
+          scroller.scrollHeight - scroller.clientHeight,
+        );
+        const railRect = railElement.getBoundingClientRect();
+        const travel = railRect.height - thumbElement.offsetHeight;
+
+        if (maxScrollTop <= 0 || travel <= 0) {
+          return;
+        }
+
+        const targetTop = Math.min(
+          travel,
+          Math.max(
+            0,
+            clientY - railRect.top - thumbElement.offsetHeight / 2,
+          ),
+        );
+        scroller.scrollTop = (targetTop / travel) * maxScrollTop;
+      }
+
+      function handlePointerDown(event: PointerEvent): void {
+        if (event.button !== 0 || !scroller) {
+          return;
+        }
+
+        const maxScrollTop = Math.max(
+          0,
+          scroller.scrollHeight - scroller.clientHeight,
+        );
+        if (maxScrollTop <= 0) {
+          return;
+        }
+
+        if (event.target === thumbElement) {
+          drag = {
+            pointerId: event.pointerId,
+            startY: event.clientY,
+            startScrollTop: scroller.scrollTop,
+          };
+        } else {
+          setScrollFromPointer(event.clientY);
+        }
+
+        railElement.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      }
+
+      function handlePointerMove(event: PointerEvent): void {
+        if (
+          !drag ||
+          !scroller ||
+          drag.pointerId !== event.pointerId
+        ) {
+          return;
+        }
+
+        const maxScrollTop = Math.max(
+          0,
+          scroller.scrollHeight - scroller.clientHeight,
+        );
+        const travel =
+          railElement.clientHeight - thumbElement.offsetHeight;
+
+        if (maxScrollTop <= 0 || travel <= 0) {
+          return;
+        }
+
+        const delta = event.clientY - drag.startY;
+        scroller.scrollTop =
+          drag.startScrollTop + (delta / travel) * maxScrollTop;
+      }
+
+      function handlePointerEnd(event: PointerEvent): void {
+        if (drag?.pointerId === event.pointerId) {
+          drag = null;
+        }
+
+        if (railElement.hasPointerCapture(event.pointerId)) {
+          railElement.releasePointerCapture(event.pointerId);
+        }
+      }
+
+      function handleWheel(event: WheelEvent): void {
+        if (!scroller) {
+          return;
+        }
+
+        scroller.scrollTop += event.deltaY;
+        event.preventDefault();
+      }
+
+      const contentObserver =
+        typeof ResizeObserver === "function"
+          ? new ResizeObserver(scheduleScrollbarUpdate)
+          : null;
+      const hostObserver =
+        typeof ResizeObserver === "function"
+          ? new ResizeObserver(() => {
+              const view =
+                hostElement.querySelector<HTMLElement>(".epub-view");
+              if (view) {
+                contentObserver?.disconnect();
+                contentObserver?.observe(view);
+              }
+              scheduleScrollbarUpdate();
+            })
+          : null;
+      const mutationObserver =
+        typeof MutationObserver === "function"
+          ? new MutationObserver(() => {
+              const view =
+                hostElement.querySelector<HTMLElement>(".epub-view");
+              if (view) {
+                contentObserver?.disconnect();
+                contentObserver?.observe(view);
+              }
+              scheduleScrollbarUpdate();
+            })
+          : null;
+
+      railElement.addEventListener("pointerdown", handlePointerDown);
+      railElement.addEventListener("pointermove", handlePointerMove);
+      railElement.addEventListener("pointerup", handlePointerEnd);
+      railElement.addEventListener("pointercancel", handlePointerEnd);
+      railElement.addEventListener("wheel", handleWheel, {
+        passive: false,
+      });
+      hostObserver?.observe(hostElement);
+      mutationObserver?.observe(hostElement, {
+        childList: true,
+        subtree: true,
+      });
+      const initialView =
+        hostElement.querySelector<HTMLElement>(".epub-view");
+      if (initialView) {
+        contentObserver?.observe(initialView);
+      }
+      updateScrollbar();
+
+      return () => {
+        if (animationFrame) {
+          window.cancelAnimationFrame(animationFrame);
+        }
+
+        scroller?.removeEventListener(
+          "scroll",
+          scheduleScrollbarUpdate,
+        );
+        contentObserver?.disconnect();
+        hostObserver?.disconnect();
+        mutationObserver?.disconnect();
+        railElement.removeEventListener("pointerdown", handlePointerDown);
+        railElement.removeEventListener("pointermove", handlePointerMove);
+        railElement.removeEventListener("pointerup", handlePointerEnd);
+        railElement.removeEventListener("pointercancel", handlePointerEnd);
+        railElement.removeEventListener("wheel", handleWheel);
+      };
+    }, [readingMode, status]);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -1089,6 +1322,19 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
         <div className="astra-epub-stage">
           <div ref={paperRef} className="astra-epub-paper">
             <div ref={hostRef} className="astra-epub-viewport" />
+            {readingMode === "scroll" ? (
+              <div
+                ref={scrollbarRef}
+                className="astra-epub-scrollbar"
+                data-visible="false"
+                aria-hidden="true"
+              >
+                <div
+                  ref={scrollbarThumbRef}
+                  className="astra-epub-scrollbar-thumb"
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
