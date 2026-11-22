@@ -82,8 +82,12 @@ npm test
 - EPUB 导航、主题、搜索、位置和键盘映射。
 - EPUB 分页/滚动键盘映射和 TXT 滚动布局。
 - EPUB 真实栏间距、旧布局自检、字号重排和分页边界回归场景。
+- EPUB 末节页感知进度、100% 末页恢复和滚动条几何。
+- EPUB 行级分栏矩形校验，覆盖横向越界和纵向裁切。
 - VS Code 深灰主题和设置归一化。
 - 通用格式化函数。
+
+截至 2026-11-22，当前测试集为 9 个测试文件、52 项测试。
 
 ### 构建检查
 
@@ -114,8 +118,14 @@ npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127
 - 切换到上下滚动后，内容可滚动，方向键和工具栏按钮按视口移动。
 - 修改字号、行距和版心后，正文和外层分页容器一起重排。
 - 切回分页模式后仍能从当前章节继续阅读。
+- 在末页修改字号、行距或版心后仍停留在末页。
+- 在章节中部切换分页/上下滚动后，页内比例保持接近。
+- 字体和图片加载完成后，正常书籍不应持续触发分栏重建警告。
+- 末章必须显示原始 EPUB 的最后一段，且进度只在真正末页为 100%。
 - 书架、阅读页和目录抽屉主题一致。
 - 移动端目录抽屉可用。
+
+完整内容审计方法和最新结果见 [CONTENT-AUDIT.md](CONTENT-AUDIT.md)。
 
 ## EPUB 调试要点
 
@@ -132,6 +142,28 @@ page step      = viewport width
 不能只通过 CSS 设置 `column-gap`。EPUB.js 的 `layout.calculate` 默认会把
 列宽设成整个视口宽度，必须同步修正 `columnWidth`、`delta`、`pageWidth` 和
 `spreadWidth`；否则栏间距会侵占正文，造成首尾字裁切或邻页混入。
+
+### 分栏运行时守卫
+
+EPUB 内容 hook 会等待 iframe 字体和图片资源稳定，然后重新读取行级
+`Range.getClientRects()`、图片矩形、`columnWidth` 和页步。
+
+- 守卫位于 `src/components/reader/epub/EpubReader.tsx`。
+- 纯矩形判断位于 `src/lib/reader/epub/runtime.ts`。
+- 发现越界时按当前 CFI 重建，最多自动重试两次。
+- 正常布局不应出现 `EPUB layout guard rebuilding columns`。
+
+### 页内位置恢复
+
+EPUB 的 CFI 可能只精确到同一章节的一段，多个分页列会共享相同 CFI。阅读器
+会持续记录当前节的 `scrollLeft` 或 `scrollTop` 比例，并在以下操作后恢复：
+
+- 字号、行距、段距和版心变化。
+- 窗口尺寸变化。
+- 分页模式与上下滚动模式互相切换。
+- 旧分栏重建。
+
+测试时应比较操作前后的 `offset / maxOffset`，不能只比较 CFI。
 
 ### 键盘焦点
 

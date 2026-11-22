@@ -11,6 +11,8 @@ AstraReader 是一个面向个人使用的本地电子书阅读器。它使用 N
 - TXT 编码识别、章节导航和字符偏移位置恢复。
 - EPUB CFI 位置、locations 缓存、嵌套目录和键盘翻页。
 - EPUB 与 TXT 支持分页和上下滚动两种阅读方式，滚动位置会写回阅读进度。
+- EPUB 字体内嵌和图片加载完成后自动校验分栏，异常时按当前位置重建。
+- 修改排版或切换阅读方式时保留章节内实际滚动比例。
 - 字体、字号、行距、段距、版心宽度、页面主题和翻页方式。
 - 书架、阅读正文、目录抽屉和设置面板共享当前主题。
 - 桌面与移动端响应式布局，局域网内多设备共享书库和进度。
@@ -82,12 +84,14 @@ npm start
 
 ## 文档
 
+- [使用指南](docs/USER-GUIDE.md)
 - [文档索引与阅读顺序](docs/README.md)
 - [产品与架构设计](docs/DESIGN.md)
 - [HTTP API 契约](docs/API.md)
 - [开发与测试指南](docs/DEVELOPMENT.md)
 - [部署、备份与升级](docs/DEPLOYMENT.md)
 - [故障排查](docs/TROUBLESHOOTING.md)
+- [EPUB 与 TXT 内容完整性审计](docs/CONTENT-AUDIT.md)
 - [发布到 GitHub 前的隐私检查](docs/GITHUB.md)
 - [变更记录](docs/CHANGELOG.md)
 

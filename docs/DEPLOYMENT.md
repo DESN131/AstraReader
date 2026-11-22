@@ -134,7 +134,13 @@ Copy-Item -LiteralPath $source -Destination $backup -Recurse
 - EPUB 封面和目录可见。
 - 连续翻页不跨章节。
 - iframe 内左右键可翻页。
+- 末章能够显示真正最后一段，进度只在末页为 100%。
+- 在章节中部切换排版或阅读模式后，不会跳回节首。
+- 控制台没有持续出现 `EPUB layout guard rebuilding columns`。
 - 主题在书架、正文和目录保持一致。
+
+如果更新涉及 EPUB.js、分页 CSS 或阅读器布局，还应按
+[CONTENT-AUDIT.md](CONTENT-AUDIT.md) 重新执行内容完整性审计。
 
 ## 回滚
 

@@ -30,10 +30,13 @@
 git status --short
 git ls-files data output .env .env.local .next .playwright-cli
 git grep -n -I -E 'api[_-]?key|secret|password|token|private key'
+git diff --cached --stat
+git check-ignore -v data output .next .playwright-cli node_modules
 ```
 
 然后人工确认：
 
+- 未跟踪的本地脚本、测试截图和临时文件没有通过 `git add .` 一并加入。
 - 没有 `data/` 中的真实书籍、封面、数据库或阅读进度。
 - 没有 `.env`、部署凭据、反向代理凭据或个人访问令牌。
 - README 中没有个人住址、学校账号或私人域名。
@@ -51,9 +54,11 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm audit --omit=dev
 git status --short
 git remote -v
 ```
 
-确认工作区干净后，再创建远程仓库并推送。首次推送前建议先在 GitHub 仓库设置
-中确认可见性为 Private 或 Public，避免把私有仓库误设为公开。
+确认暂存内容只包含预期源码、测试和文档后，再创建远程仓库并推送。首次推送
+前建议先在 GitHub 仓库设置中确认可见性为 Private 或 Public，避免把私有仓库
+误设为公开。不要使用 `git add .` 代替逐项检查。

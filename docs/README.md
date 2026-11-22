@@ -4,27 +4,29 @@
 
 ## 推荐阅读顺序
 
-1. [产品与架构设计](DESIGN.md)：范围、架构、数据流和关键技术决策。
-2. [HTTP API 契约](API.md)：前后端接口、状态码、请求和响应结构。
-3. [开发与测试指南](DEVELOPMENT.md)：本地开发、模块规则、测试和质量门槛。
-4. [部署、备份与升级](DEPLOYMENT.md)：Windows 本地生产运行和运维步骤。
-5. [故障排查](TROUBLESHOOTING.md)：常见症状、诊断命令和修复方式。
-6. [变更记录](CHANGELOG.md)：功能阶段和重要修复。
-7. [EPUB 内容完整性审计](CONTENT-AUDIT.md)：书脊正文与阅读器渲染结果的全量对比。
-8. [发布到 GitHub 前的隐私检查](GITHUB.md)：提交历史、数据目录和发布清单。
+1. [使用指南](USER-GUIDE.md)：导入、阅读、设置、进度和数据安全。
+2. [产品与架构设计](DESIGN.md)：范围、架构、数据流和关键技术决策。
+3. [HTTP API 契约](API.md)：前后端接口、状态码、请求和响应结构。
+4. [开发与测试指南](DEVELOPMENT.md)：本地开发、模块规则、测试和质量门槛。
+5. [部署、备份与升级](DEPLOYMENT.md)：Windows 本地生产运行和运维步骤。
+6. [故障排查](TROUBLESHOOTING.md)：常见症状、诊断命令和修复方式。
+7. [EPUB 与 TXT 内容完整性审计](CONTENT-AUDIT.md)：正文、分栏、页步和末页的全量验证。
+8. [变更记录](CHANGELOG.md)：功能阶段和重要修复。
+9. [发布到 GitHub 前的隐私检查](GITHUB.md)：提交历史、数据目录和发布清单。
 
 ## 文档状态
 
 | 文档 | 维护内容 |
 | --- | --- |
 | `README.md` | 快速开始、功能范围和文档入口 |
+| `USER-GUIDE.md` | 面向使用者的导入、阅读、设置和数据说明 |
 | `DESIGN.md` | 架构、阅读引擎、主题、数据和关键不变量 |
 | `API.md` | Route Handler 方法、请求体、响应和错误 |
 | `DEVELOPMENT.md` | 开发流程、代码边界、测试和调试 |
 | `DEPLOYMENT.md` | 生产启动、网络安全、备份、恢复和升级 |
 | `TROUBLESHOOTING.md` | 按症状定位问题 |
 | `CHANGELOG.md` | 阶段性变更和关键修复 |
-| `CONTENT-AUDIT.md` | 原始 EPUB 与阅读器渲染内容的完整性审计 |
+| `CONTENT-AUDIT.md` | 原始 EPUB/TXT 与阅读器实际可见内容的完整性审计 |
 | `GITHUB.md` | GitHub 发布前的隐私、数据和仓库检查清单 |
 
 ## 事实来源

@@ -101,6 +101,15 @@ page step      = viewport width
 `EPUB layout guard rebuilding columns`，表示自动校验发现越界并已重建分栏；
 若连续两次仍失败，阅读器会显示错误，不应继续静默显示不完整内容。
 
+如果出现“EPUB 分栏完整性校验失败”：
+
+1. 记录当前书名、章节、字号、行距、段距、版心和窗口尺寸。
+2. 切换一次字号或版心，让 EPUB.js 重新创建布局。
+3. 若仍失败，重新打开图书；旧版 100% 进度会恢复到真正末页。
+4. 在隔离浏览器中按 [CONTENT-AUDIT.md](CONTENT-AUDIT.md) 复现并检查
+   纵向越界、列宽和页步。
+5. 保留浏览器控制台与 Network 面板错误，不要只提供截图。
+
 ## 行距设置无效
 
 EPUB 常在 `p`、`div` 或 class 上单独声明 `line-height`，只设置 `body`
