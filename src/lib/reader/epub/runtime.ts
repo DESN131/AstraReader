@@ -26,6 +26,13 @@ export interface EpubScrollbarThumbGeometry {
   thumbTop: number;
 }
 
+export interface EpubLayoutRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 type EpubRenderOptions = NonNullable<Parameters<Book["renderTo"]>[1]>;
 
 export type EpubNavigationDirection = "next" | "previous";
@@ -141,6 +148,56 @@ export function getEpubScrollbarThumbGeometry({
     thumbHeight,
     thumbTop: progress * maxThumbTop,
   };
+}
+
+export function isEpubLayoutRectWithinColumn(
+  rect: EpubLayoutRect,
+  {
+    columnWidth,
+    columnGap,
+    paddingLeft,
+    paddingTop,
+    paddingBottom,
+    pageWidth,
+    pageHeight,
+  }: {
+    columnWidth: number;
+    columnGap: number;
+    paddingLeft: number;
+    paddingTop: number;
+    paddingBottom: number;
+    pageWidth: number;
+    pageHeight: number;
+  },
+): boolean {
+  const step = columnWidth + columnGap;
+  const width = rect.right - rect.left;
+  const height = rect.bottom - rect.top;
+  if (
+    step <= 0 ||
+    pageWidth <= 0 ||
+    pageHeight <= 0 ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return false;
+  }
+
+  const centerX = rect.left + (rect.right - rect.left) / 2;
+  const columnIndex = Math.floor(
+    (centerX - paddingLeft) / step,
+  );
+  const columnStart = paddingLeft + columnIndex * step;
+  const columnEnd = columnStart + columnWidth;
+
+  return (
+    columnIndex >= 0 &&
+    columnEnd <= columnIndex * pageWidth + pageWidth + 1 &&
+    rect.left >= columnStart - 1 &&
+    rect.right <= columnEnd + 1 &&
+    rect.top >= paddingTop - 1 &&
+    rect.bottom <= pageHeight - paddingBottom + 1
+  );
 }
 
 export function renderEpubWithoutUnload(

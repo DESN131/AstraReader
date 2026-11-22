@@ -96,6 +96,11 @@ page step      = viewport width
 
 翻页后 `.epub-container.scrollLeft` 应稳定按页宽递增或递减。
 
+分页模式会持续保存章节内滚动比例。字号、行距、版心、窗口或阅读模式变化后，
+应恢复到相近页内位置，而不是回到节首。若控制台出现
+`EPUB layout guard rebuilding columns`，表示自动校验发现越界并已重建分栏；
+若连续两次仍失败，阅读器会显示错误，不应继续静默显示不完整内容。
+
 ## 行距设置无效
 
 EPUB 常在 `p`、`div` 或 class 上单独声明 `line-height`，只设置 `body`

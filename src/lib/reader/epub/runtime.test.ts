@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEpubKeyboardDirection,
   getEpubScrollbarThumbGeometry,
+  isEpubLayoutRectWithinColumn,
   refineEpubEndPercentage,
   renderEpubWithoutUnload,
 } from "./runtime";
@@ -182,5 +183,56 @@ describe("refineEpubEndPercentage", () => {
         maxOffset: 2_000,
       }),
     ).toBe(1);
+  });
+});
+
+describe("isEpubLayoutRectWithinColumn", () => {
+  const layout = {
+    columnWidth: 660,
+    columnGap: 32,
+    paddingLeft: 16,
+    paddingTop: 20,
+    paddingBottom: 20,
+    pageWidth: 692,
+    pageHeight: 600,
+  };
+
+  it("accepts a rect inside a content column", () => {
+    expect(
+      isEpubLayoutRectWithinColumn(
+        {
+          left: 708,
+          right: 750,
+          top: 30,
+          bottom: 55,
+        },
+        layout,
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects horizontal and vertical overflow", () => {
+    expect(
+      isEpubLayoutRectWithinColumn(
+        {
+          left: 670,
+          right: 700,
+          top: 30,
+          bottom: 55,
+        },
+        layout,
+      ),
+    ).toBe(false);
+    expect(
+      isEpubLayoutRectWithinColumn(
+        {
+          left: 20,
+          right: 60,
+          top: 570,
+          bottom: 610,
+        },
+        layout,
+      ),
+    ).toBe(false);
   });
 });
