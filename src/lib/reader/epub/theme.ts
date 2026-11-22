@@ -88,6 +88,9 @@ export function createEpubThemeRules(
       "word-break": "normal",
       "-webkit-text-size-adjust": "100%",
     },
+    "body, body *": {
+      "line-height": `${lineHeight} !important`,
+    },
     "body p, body li, body dd, body dt, body blockquote": {
       "text-align": "inherit !important",
     },

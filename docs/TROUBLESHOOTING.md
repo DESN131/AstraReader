@@ -96,6 +96,23 @@ page step      = viewport width
 
 翻页后 `.epub-container.scrollLeft` 应稳定按页宽递增或递减。
 
+## 行距设置无效
+
+EPUB 常在 `p`、`div` 或 class 上单独声明 `line-height`，只设置 `body`
+不会覆盖这些规则。当前主题规则对 `body` 和全部正文后代使用用户行距，并保留
+标题的独立行高。
+
+检查 iframe 内正文段落的计算样式：
+
+```javascript
+getComputedStyle(
+  document.querySelector(".astra-epub-viewport iframe").contentDocument.querySelector("p")
+).lineHeight;
+```
+
+调整行距后该值应立即变化，分页模式的页数或滚动模式的 `scrollHeight`
+也应随之变化。
+
 ## 控制台出现 Blocked script execution
 
 如果消息指向 EPUB iframe 的 `about:srcdoc`，这是 sandbox 主动阻止电子书内嵌脚本的结果。
