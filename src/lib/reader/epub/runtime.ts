@@ -271,6 +271,40 @@ export function getEpubPercentage(
   return spineLength > 0 ? clampPercentage(index / spineLength) : 0;
 }
 
+export function refineEpubEndPercentage({
+  basePercentage,
+  spineIndex,
+  spineLength,
+  offset,
+  maxOffset,
+}: {
+  basePercentage: number;
+  spineIndex: number;
+  spineLength: number;
+  offset: number;
+  maxOffset: number;
+}): number {
+  const percentage = clampPercentage(basePercentage);
+
+  if (
+    spineLength <= 0 ||
+    spineIndex !== spineLength - 1 ||
+    maxOffset <= 1
+  ) {
+    return percentage;
+  }
+
+  const localProgress = clampPercentage(offset / maxOffset);
+
+  if (localProgress >= 0.999) {
+    return 1;
+  }
+
+  return clampPercentage(
+    (spineIndex + localProgress) / spineLength,
+  );
+}
+
 export async function readEpubApiError(
   response: Response,
   fallback: string,

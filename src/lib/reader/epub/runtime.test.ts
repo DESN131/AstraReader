@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEpubKeyboardDirection,
   getEpubScrollbarThumbGeometry,
+  refineEpubEndPercentage,
   renderEpubWithoutUnload,
 } from "./runtime";
 
@@ -143,5 +144,43 @@ describe("getEpubScrollbarThumbGeometry", () => {
     expect(geometry.visible).toBe(true);
     expect(geometry.thumbHeight).toBe(32);
     expect(geometry.thumbTop).toBe(368);
+  });
+});
+
+describe("refineEpubEndPercentage", () => {
+  it("keeps the end section below 100% until the final page", () => {
+    expect(
+      refineEpubEndPercentage({
+        basePercentage: 0.99,
+        spineIndex: 20,
+        spineLength: 21,
+        offset: 2_960,
+        maxOffset: 3_552,
+      }),
+    ).toBeCloseTo(20.833 / 21);
+  });
+
+  it("returns 100% on the final page", () => {
+    expect(
+      refineEpubEndPercentage({
+        basePercentage: 1,
+        spineIndex: 20,
+        spineLength: 21,
+        offset: 3_552,
+        maxOffset: 3_552,
+      }),
+    ).toBe(1);
+  });
+
+  it("does not rewrite percentages before the final spine", () => {
+    expect(
+      refineEpubEndPercentage({
+        basePercentage: 1,
+        spineIndex: 10,
+        spineLength: 21,
+        offset: 200,
+        maxOffset: 2_000,
+      }),
+    ).toBe(1);
   });
 });

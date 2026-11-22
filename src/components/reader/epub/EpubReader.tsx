@@ -35,6 +35,7 @@ import {
   getEpubKeyboardDirection,
   getEpubScrollbarThumbGeometry,
   readEpubApiError,
+  refineEpubEndPercentage,
   renderEpubWithoutUnload,
   toEpubReadingLocation,
   toError,
@@ -493,7 +494,34 @@ function emitLocation(
     return;
   }
 
-  const percentage = getEpubPercentage(session.book, location);
+  const scroller = getEpubScroller(session);
+  const spineLength = Number(
+    (session.book.spine as unknown as { length?: number }).length ?? 0,
+  );
+  const spineIndex = Number(location.start.index ?? -1);
+  const maxOffset = scroller
+    ? session.readingMode === "scroll"
+      ? Math.max(
+          0,
+          scroller.scrollHeight - scroller.clientHeight,
+        )
+      : Math.max(
+          0,
+          scroller.scrollWidth - scroller.clientWidth,
+        )
+    : 0;
+  const offset = scroller
+    ? session.readingMode === "scroll"
+      ? scroller.scrollTop
+      : scroller.scrollLeft
+    : 0;
+  const percentage = refineEpubEndPercentage({
+    basePercentage: getEpubPercentage(session.book, location),
+    spineIndex,
+    spineLength,
+    offset,
+    maxOffset,
+  });
   const chapterLabel = findEpubChapterLabel(
     session.chapterLabels,
     location.start.href,
@@ -642,6 +670,7 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
     const [retryKey, setRetryKey] = useState(0);
 
     const bookId = book.id;
+    const initialProgressPercentage = book.progress?.percentage ?? 0;
     const readingMode: EpubReadingMode =
       settings.animation === "scroll" ? "scroll" : "paginated";
 
@@ -851,9 +880,36 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           await rendition.reportLocation();
           await nextFrame();
 
-          const current =
+          let current =
             (await getCurrentEpubLocation(rendition)) ??
             session.currentLocation;
+          const scroller = getEpubScroller(session);
+
+          if (
+            current &&
+            scroller &&
+            readyBookRef.current !== bookId &&
+            initialProgressPercentage >= 0.999
+          ) {
+            if (readingMode === "scroll") {
+              scroller.scrollTop = Math.max(
+                0,
+                scroller.scrollHeight - scroller.clientHeight,
+              );
+            } else {
+              scroller.scrollLeft = Math.max(
+                0,
+                scroller.scrollWidth - scroller.clientWidth,
+              );
+            }
+
+            await nextFrame();
+            await rendition.reportLocation();
+            current =
+              (await getCurrentEpubLocation(rendition)) ??
+              current;
+          }
+
           emitLocation(session, callbacksRef.current, current);
           scheduleResize(session, host);
           setStatus("ready");
@@ -933,7 +989,12 @@ export const EpubReader = forwardRef<ReaderHandle, ReaderViewProps>(
           sessionRef.current = null;
         }
       };
-    }, [bookId, readingMode, retryKey]);
+    }, [
+      bookId,
+      initialProgressPercentage,
+      readingMode,
+      retryKey,
+    ]);
 
     useEffect(() => {
       if (readingMode !== "scroll" || status !== "ready") {

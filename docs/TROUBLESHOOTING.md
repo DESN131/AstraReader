@@ -113,6 +113,26 @@ getComputedStyle(
 调整行距后该值应立即变化，分页模式的页数或滚动模式的 `scrollHeight`
 也应随之变化。
 
+## 最后一页内容看起来缺失
+
+EPUB 的最后一个 CFI 可能覆盖同一章节的多页，`percentageFromCfi()` 会提前
+返回 100%。AstraReader 对最后一个 spine 使用实际 `scrollLeft` 或
+`scrollTop` 计算末节进度：
+
+- 分页模式只在 `scrollLeft === scrollWidth - clientWidth` 时显示 100%。
+- 上下滚动模式只在 `scrollTop === scrollHeight - clientHeight` 时显示 100%。
+- 已保存为 100% 的旧进度会在首次打开时直接恢复到末页。
+
+检查末页：
+
+```javascript
+const frame = document.querySelector(".astra-epub-viewport iframe");
+const body = frame.contentDocument.body;
+body.textContent.slice(-300);
+```
+
+最后一段应存在于 DOM，并且分页容器必须能到达最大滚动偏移。
+
 ## 控制台出现 Blocked script execution
 
 如果消息指向 EPUB iframe 的 `about:srcdoc`，这是 sandbox 主动阻止电子书内嵌脚本的结果。
