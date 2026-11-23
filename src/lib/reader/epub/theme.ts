@@ -130,3 +130,23 @@ export function createEpubThemeRules(
     },
   };
 }
+
+export function createFoliateEpubStyles(settings: ReaderSettings): string {
+  const rules = createEpubThemeRules(settings);
+
+  rules.body = {
+    ...rules.body,
+    "box-sizing": "border-box !important",
+    "padding-left": "0 !important",
+    "padding-right": "0 !important",
+  };
+
+  return Object.entries(rules)
+    .map(
+      ([selector, declarations]) =>
+        `${selector}{${Object.entries(declarations)
+          .map(([property, value]) => `${property}:${value}`)
+          .join(";")}}`,
+    )
+    .join("\n");
+}

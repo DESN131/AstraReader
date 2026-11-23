@@ -1,5 +1,4 @@
 .astra-epub-root {
-  --epub-page-inset: clamp(18px, 3vw, 32px);
   position: relative;
   width: 100%;
   height: 100%;
@@ -23,6 +22,8 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  contain: paint;
+  isolation: isolate;
   background: var(--epub-background, #fffdf8);
   border-inline: 1px solid var(--epub-border, #ddd9cd);
   box-shadow: 0 10px 36px rgb(0 0 0 / 9%);
@@ -34,35 +35,29 @@
 
 .astra-epub-viewport {
   position: relative;
-  width: calc(100% - (var(--epub-page-inset) * 2));
-  margin-inline: auto;
+  width: 100%;
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
-.astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport {
-  overscroll-behavior: contain;
+.astra-foliate-view {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  outline: none;
 }
 
-.astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport .epub-container {
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
+.astra-foliate-view::part(container) {
+  background: transparent;
   scrollbar-width: none;
-  scrollbar-gutter: auto;
   -ms-overflow-style: none;
 }
 
-.astra-epub-root[data-reading-mode="scroll"]
-  .astra-epub-viewport
-  .epub-container::-webkit-scrollbar {
+.astra-foliate-view::part(container)::-webkit-scrollbar {
   width: 0;
   height: 0;
-}
-
-.astra-epub-root[data-reading-mode="scroll"] .astra-epub-viewport .epub-view {
-  width: 100% !important;
 }
 
 .astra-epub-scrollbar {
@@ -117,11 +112,6 @@
 
 .astra-epub-scrollbar-thumb:active {
   cursor: grabbing;
-}
-
-.astra-epub-viewport [class~="epub-container"],
-.astra-epub-viewport [class~="epub-view"] {
-  background: transparent !important;
 }
 
 .astra-epub-status-layer {

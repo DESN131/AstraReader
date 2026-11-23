@@ -1,4 +1,5 @@
 const REMOTE_PROTOCOL = /^(?:https?|ftp):/i;
+const SCRIPT_PROTOCOL = /^(?:javascript|vbscript):/i;
 
 function isRemoteReference(value: string | null): boolean {
   if (!value) {
@@ -9,23 +10,31 @@ function isRemoteReference(value: string | null): boolean {
   return REMOTE_PROTOCOL.test(normalized) || normalized.startsWith("//");
 }
 
-function stripRemoteCss(css: string): string {
+function isScriptReference(value: string | null): boolean {
+  return Boolean(value && SCRIPT_PROTOCOL.test(value.trim()));
+}
+
+export function stripRemoteCss(css: string): string {
   return css
     .replace(/@import\s+(?:url\()?["']?(?:https?:)?\/\/[^;]+;?/gi, "")
     .replace(
       /url\(\s*(["']?)(?:https?:)?\/\/[^)"']*\1\s*\)/gi,
       "none",
+    )
+    .replace(
+      /url\(\s*(["']?)(?:javascript|vbscript):[\s\S]*?\1\s*\)/gi,
+      "none",
     );
 }
 
-function removeRemoteAttribute(
+function removeUnsafeAttribute(
   element: Element,
   attribute: string,
   blockAttribute: string,
 ) {
   const value = element.getAttribute(attribute);
 
-  if (!isRemoteReference(value)) {
+  if (!isRemoteReference(value) && !isScriptReference(value)) {
     return;
   }
 
@@ -48,6 +57,15 @@ export function hardenEpubDocument(document: Document): void {
     }
   });
 
+  document.querySelectorAll("*").forEach((element) => {
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith("on") || name === "srcdoc") {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  });
+
   document.querySelectorAll("style").forEach((element) => {
     const css = element.textContent ?? "";
 
@@ -62,7 +80,7 @@ export function hardenEpubDocument(document: Document): void {
     )
     .forEach((element) => {
       for (const attribute of ["src", "poster", "href", "data"]) {
-        removeRemoteAttribute(
+        removeUnsafeAttribute(
           element,
           attribute,
           `data-astra-blocked-${attribute}`,
@@ -71,7 +89,7 @@ export function hardenEpubDocument(document: Document): void {
     });
 
   document.querySelectorAll("base").forEach((element) => {
-    removeRemoteAttribute(element, "href", "data-astra-blocked-href");
+    removeUnsafeAttribute(element, "href", "data-astra-blocked-href");
   });
 
   document.querySelectorAll("[srcset]").forEach((element) => {
@@ -89,11 +107,18 @@ export function hardenEpubDocument(document: Document): void {
   });
 
   document.querySelectorAll("form[action]").forEach((element) => {
-    removeRemoteAttribute(element, "action", "data-astra-blocked-action");
+    removeUnsafeAttribute(element, "action", "data-astra-blocked-action");
   });
 
   document.querySelectorAll("a[href]").forEach((element) => {
     const href = element.getAttribute("href");
+
+    if (isScriptReference(href)) {
+      element.removeAttribute("href");
+      element.setAttribute("data-astra-blocked-href", href ?? "");
+      element.setAttribute("title", "脚本链接已在阅读器中禁用");
+      return;
+    }
 
     if (!isRemoteReference(href)) {
       return;
@@ -105,7 +130,14 @@ export function hardenEpubDocument(document: Document): void {
   });
 
   document.querySelectorAll("[xlink\\:href]").forEach((element) => {
-    removeRemoteAttribute(
+    const href = element.getAttribute("xlink:href");
+    if (isScriptReference(href)) {
+      element.removeAttribute("xlink:href");
+      element.setAttribute("data-astra-blocked-xlink-href", href ?? "");
+      return;
+    }
+
+    removeUnsafeAttribute(
       element,
       "xlink:href",
       "data-astra-blocked-xlink-href",
@@ -117,6 +149,19 @@ export function hardenEpubDocument(document: Document): void {
   ).forEach((element) => {
     element.setAttribute("data-astra-blocked", "");
   });
+}
+
+export function hardenEpubMarkup(markup: string): string {
+  const parser = new DOMParser();
+  let document = parser.parseFromString(markup, "application/xhtml+xml");
+
+  if (document.querySelector("parsererror")) {
+    document = parser.parseFromString(markup, "text/html");
+  }
+
+  hardenEpubDocument(document);
+
+  return new XMLSerializer().serializeToString(document);
 }
 
 export function hardenEpubContents(contents: unknown): void {
