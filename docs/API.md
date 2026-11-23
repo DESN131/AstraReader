@@ -32,8 +32,8 @@
 | `POST` | `/api/uploads/book` | 原始字节流上传 |
 | `GET` | `/api/books/:id/progress` | 读取进度 |
 | `PUT` | `/api/books/:id/progress` | 保存进度 |
-| `GET` | `/api/books/:id/locations` | 读取 EPUB locations |
-| `PUT` | `/api/books/:id/locations` | 保存 EPUB locations |
+| `GET` | `/api/books/:id/locations` | 读取旧版 EPUB locations |
+| `PUT` | `/api/books/:id/locations` | 保存旧版 EPUB locations |
 | `GET` | `/api/books/:id/bookmarks` | 列出书签 |
 | `POST` | `/api/books/:id/bookmarks` | 创建书签 |
 | `DELETE` | `/api/books/:id/bookmarks/:bookmarkId` | 删除书签 |
@@ -218,11 +218,14 @@ TXT 位置：
 
 `percentage` 范围为 `0` 到 `1`。每本书只保留最新进度，最后写入覆盖。
 
-EPUB 客户端会结合 CFI 和当前节内实际滚动比例更新 `percentage`；API 本身只保存
-客户端提交的位置，不负责判断该 CFI 是否覆盖了多个分页列。TXT 应提交可见内容
-对应的字符偏移。
+EPUB 客户端会根据 Foliate 当前可见 Range 的节内页比例与 spine 大小计算
+`percentage`；API 本身只保存客户端提交的位置，不负责解析该 CFI 是否覆盖了
+多个分页列。TXT 应提交可见内容对应的字符偏移。
 
-## EPUB Locations
+## 旧版 EPUB Locations
+
+该接口为兼容旧书签、旧客户端和已有 `locations.json` 保留。当前阅读器使用
+Foliate 的可见 Range 与 spine 大小计算进度，不再生成或依赖 locations。
 
 ### `GET /api/books/:id/locations`
 

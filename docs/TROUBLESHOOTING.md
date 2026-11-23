@@ -24,7 +24,7 @@ npm run build
 
 - 浏览器仍加载旧构建。
 - 阅读器容器初始高度异常。
-- 自定义主题或旧 CSS 覆盖了 EPUB.js 布局。
+- Foliate.js 尚未加载，或 renderer 属性被自定义 CSS/旧构建覆盖。
 
 处理：
 
@@ -32,7 +32,7 @@ npm run build
 2. 强制刷新页面。
 3. 在无痕窗口或独立浏览器会话验证。
 4. 检查控制台是否出现 `book.epub` 加载失败。
-5. 检查阅读页是否有 `.epub-container`。
+5. 检查阅读页是否有 `foliate-view`，且 `view.renderer` 已创建。
 
 无头浏览器检查示例：
 
@@ -40,33 +40,53 @@ npm run build
 npx --yes --package @playwright/cli playwright-cli -s=astra-test open http://127.0.0.1:3000
 ```
 
-## 一屏显示两页或左右被截断
+## 一屏显示两页、左侧串页或右侧被截断
 
-这是 EPUB 分页步长与真实列步长不一致。
+当前 EPUB 正文由 Foliate.js 分页，不再改写 EPUB.js 私有 layout 字段。先确认
+实际 renderer 配置：
 
-正确关系：
+```javascript
+const view = document.querySelector("foliate-view");
+const renderer = view.renderer;
 
-```text
-viewport width = content column width + 32
-page step      = viewport width
+console.log({
+  flow: renderer.getAttribute("flow"),
+  columns: renderer.getAttribute("max-column-count"),
+  inline: renderer.getAttribute("max-inline-size"),
+  gap: renderer.getAttribute("gap"),
+  page: renderer.page,
+  pages: renderer.pages,
+});
 ```
 
-当前实现使用 32px 栏间距，并在 EPUB.js 重新计算布局后同步修正实际列宽、
-`delta` 和 `pageWidth`。正文左右各保留 16px 内边距，避免字形贴边。
+正常分页应为：
 
-正常情况下：
+```text
+flow             = paginated
+max-column-count = 1
+max-inline-size  = 当前版心宽度
+```
 
-- `.epub-container` 的 `scrollLeft` 应为页宽的整数倍。
-- 一屏只应显示一列。
-- 连续右翻、左翻后章节不应意外变化。
+如果值不对，检查 `FoliateEpubReader.tsx` 的 `applyViewSettings()`。属性必须设置
+在 `view.renderer` 上；设置在外层 `foliate-view` 不会生效。
+
+检查页码是否单调变化：
+
+```javascript
+renderer.page;
+renderer.pages;
+```
+
+连续点击下一页时，`page` 应在当前节内递增；到节末后应切换 section index。
+不要再用 `scrollWidth % clientWidth` 判断 Foliate 的分页是否正确。
 
 ## 左右方向键不工作
 
 键盘焦点可能在 EPUB iframe 内。父页面 `window` 收不到 iframe 键盘事件。
 
-当前实现需要：
+当前实现：
 
-- 父页面处理普通方向键。
+- 父页面 EPUB 容器处理普通方向键。
 - EPUB iframe 文档处理 focus 在正文内的方向键。
 - iframe 监听必须是非 passive。
 
@@ -76,39 +96,33 @@ page step      = viewport width
 
 检查：
 
-- EPUB.js 的 `gap` 是否为 32，且实际列宽是否为视口宽度减 32。
-- 翻页前是否执行了旧布局自检和列宽重建。
-- 页面恢复是否落在页边界。
+- `renderer.page` 是否每次只递增 1。
+- 节末是否只在最后一页后切换 section。
+- 当前分页的 `lastLocation.range` 是否与下一分页连续。
 - 是否同时触发了父页面和 iframe 的两次翻页。
 - 是否仍运行旧 JS bundle。
 
-如果切换到上下滚动后内容仍然不可见，检查 `.epub-container` 的
-`scrollHeight` 是否大于 `clientHeight`，以及阅读方式切换后是否创建了新的
-`rendition`。当前实现会在分页和滚动之间重建 rendition，以当前 CFI 恢复。
+真正的完整性检查应把当前节每一页的可见 Range 文本拼接，再与原始章节正文
+比较。步骤见 [CONTENT-AUDIT.md](CONTENT-AUDIT.md)。
 
-如果正文贴住纸张左右边框，检查 `.astra-epub-viewport` 是否应用了
-`--epub-page-inset`。安全边距必须在 EPUB.js 视口外层留出，而不是直接给
-内部的 CSS 列增加 padding，否则会破坏分页步长。
+## 上下滚动正文变窄
 
-上下滚动模式隐藏原生占位滚动条，使用纸张右边缘的悬浮滚动条。滚动条不参与
-正文宽度计算；正文左右内边距固定为 `16px`，与分页模式的实际文本列一致。
-拖动滑块、点击轨道和滚轮均可滚动。
+滚动模式与分页模式共用同一个 Foliate renderer 和最大行宽。检查：
 
-翻页后 `.epub-container.scrollLeft` 应稳定按页宽递增或递减。
+- renderer 的 `flow` 是否为 `scrolled`。
+- `max-inline-size` 是否与分页模式相同。
+- `.astra-epub-scrollbar` 是否覆盖在纸张边缘，而不是占用布局列。
+- `foliate-view::part(container)` 是否隐藏了原生滚动条。
 
-分页模式会持续保存章节内滚动比例。字号、行距、版心、窗口或阅读模式变化后，
-应恢复到相近页内位置，而不是回到节首。若控制台出现
-`EPUB layout guard rebuilding columns`，表示自动校验发现越界并已重建分栏；
-若连续两次仍失败，阅读器会显示错误，不应继续静默显示不完整内容。
+## 翻页后跳回章节开头
 
-如果出现“EPUB 分栏完整性校验失败”：
+Foliate 使用当前可见 Range 作为重排锚点。若发生跳转：
 
-1. 记录当前书名、章节、字号、行距、段距、版心和窗口尺寸。
-2. 切换一次字号或版心，让 EPUB.js 重新创建布局。
-3. 若仍失败，重新打开图书；旧版 100% 进度会恢复到真正末页。
-4. 在隔离浏览器中按 [CONTENT-AUDIT.md](CONTENT-AUDIT.md) 复现并检查
-   纵向越界、列宽和页步。
-5. 保留浏览器控制台与 Network 面板错误，不要只提供截图。
+1. 检查 `lastLocation.range` 是否为空。
+2. 确认修改设置时调用的是同一个 renderer，而不是新建 view。
+3. 确认 `applyViewSettings()` 在同一帧内设置 flow、版心、主题并调用
+   `renderer.render()`。
+4. 用隔离浏览器切换字号、行距、版心和阅读模式，比较操作前后的 Range 文本。
 
 ## 行距设置无效
 
@@ -119,9 +133,10 @@ EPUB 常在 `p`、`div` 或 class 上单独声明 `line-height`，只设置 `bod
 检查 iframe 内正文段落的计算样式：
 
 ```javascript
-getComputedStyle(
-  document.querySelector(".astra-epub-viewport iframe").contentDocument.querySelector("p")
-).lineHeight;
+const doc = document
+  .querySelector("foliate-view")
+  .renderer.getContents()[0].doc;
+getComputedStyle(doc.querySelector("p")).lineHeight;
 ```
 
 调整行距后该值应立即变化，分页模式的页数或滚动模式的 `scrollHeight`
@@ -129,20 +144,18 @@ getComputedStyle(
 
 ## 最后一页内容看起来缺失
 
-EPUB 的最后一个 CFI 可能覆盖同一章节的多页，`percentageFromCfi()` 会提前
-返回 100%。AstraReader 对最后一个 spine 使用实际 `scrollLeft` 或
-`scrollTop` 计算末节进度：
-
-- 分页模式只在 `scrollLeft === scrollWidth - clientWidth` 时显示 100%。
-- 上下滚动模式只在 `scrollTop === scrollHeight - clientHeight` 时显示 100%。
-- 已保存为 100% 的旧进度会在首次打开时直接恢复到末页。
+Foliate 提供每节实际页数、当前页和可见 Range。AstraReader 会将在最后一节
+显示末页视为 100%；历史 100% 位置会通过 `goTo({ fraction: 1 })` 直接恢复到
+末节末尾。
 
 检查末页：
 
 ```javascript
-const frame = document.querySelector(".astra-epub-viewport iframe");
-const body = frame.contentDocument.body;
-body.textContent.slice(-300);
+const view = document.querySelector("foliate-view");
+const doc = view.renderer.getContents()[0].doc;
+doc.body.textContent.slice(-300);
+
+view.lastLocation.range.toString();
 ```
 
 最后一段应存在于 DOM，并且分页容器必须能到达最大滚动偏移。
@@ -159,15 +172,11 @@ body.textContent.slice(-300);
 
 不要通过增加 `allow-scripts` 来消除该日志。
 
-## 控制台出现 unload 权限违规
+## 控制台出现 iframe sandbox 警告
 
-旧版 EPUB.js 会注册 `window.unload`。当前实现已在创建 rendition 时过滤该监听。
-
-如果仍出现：
-
-- 确认运行的是最新构建。
-- 检查是否还有旧 `next start` 进程占用端口。
-- 重建并重启。
+Foliate 为兼容浏览器 iframe 内容保留 `allow-scripts` 和 `allow-same-origin`，
+Chrome 可能提示 sandbox 警告。书籍脚本在写入 iframe 前已经移除，加载后还会
+再次加固 DOM。不要为了消除提示而删除加固流程。
 
 ## 导入失败
 
@@ -203,7 +212,8 @@ body.textContent.slice(-300);
 
 - EPUB 使用 CFI，书籍内容或版本变化可能让旧 CFI 失效。
 - TXT 使用字符偏移，重新保存或转换编码可能改变偏移。
-- locations 尚未生成时百分比是估算值。
+- EPUB 百分比按 spine 字节大小和当前节内页比例计算，是阅读位置估值。
+- `data/books/<id>/locations.json` 是旧版缓存，当前阅读器不再依赖。
 
 检查：
 

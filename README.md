@@ -9,10 +9,10 @@ AstraReader 是一个面向个人使用的本地电子书阅读器。它使用 N
 - 查看、编辑和永久删除图书信息。
 - 目录抽屉、书内搜索、书签、进度续读和基础阅读统计。
 - TXT 编码识别、章节导航和字符偏移位置恢复。
-- EPUB CFI 位置、locations 缓存、嵌套目录和键盘翻页。
+- EPUB CFI 位置、嵌套目录、书内搜索和键盘翻页。
 - EPUB 与 TXT 支持分页和上下滚动两种阅读方式，滚动位置会写回阅读进度。
-- EPUB 字体内嵌和图片加载完成后自动校验分栏，异常时按当前位置重建。
-- 修改排版或切换阅读方式时保留章节内实际滚动比例。
+- EPUB 使用可见文本 Range 锚定当前位置，字号或窗口变化后不会跳回章节开头。
+- EPUB 与 TXT 分页正文逐页连续，不依赖边缘遮罩隐藏相邻页。
 - 字体、字号、行距、段距、版心宽度、页面主题和翻页方式。
 - 书架、阅读正文、目录抽屉和设置面板共享当前主题。
 - 桌面与移动端响应式布局，局域网内多设备共享书库和进度。
@@ -23,7 +23,8 @@ AstraReader 是一个面向个人使用的本地电子书阅读器。它使用 N
 | --- | --- |
 | Web 框架 | Next.js 16 App Router |
 | UI | React 19、Tailwind CSS 4、Radix UI、Lucide |
-| EPUB | EPUB.js 0.3.93 |
+| EPUB 阅读 | Foliate.js 1.0.1 |
+| EPUB 元数据与封面 | EPUB.js 0.3.93 |
 | TXT | 自建编码检测、章节解析和 CSS 多栏分页 |
 | 服务端 | Node.js 24、Route Handlers |
 | 数据库 | SQLite、`better-sqlite3` |
@@ -57,7 +58,7 @@ data/
 ├─ books/<book-id>/
 │  ├─ book.txt | book.epub
 │  ├─ cover-<uuid>.webp
-│  └─ locations.json
+│  └─ locations.json（旧版兼容文件，当前阅读器不依赖）
 └─ imports/<upload-id>/
 ```
 
@@ -98,6 +99,8 @@ npm start
 ## 当前限制
 
 - 不支持 PDF、MOBI、AZW3、DRM 电子书。
+- EPUB 仍受浏览器 CSS 多栏排版限制，复杂浮动、固定尺寸表格或异常书内样式
+  可能与原排版不同；正文本身会逐页保留。
 - 不支持批注、笔记、TTS、OCR、云同步和自定义字体上传。
 - 没有登录、用户和权限系统。
 - 主题偏好保存在各自浏览器；书库、进度和书签保存在共享服务端。
@@ -106,3 +109,6 @@ npm start
 ## 安全提示
 
 同一局域网内任何能访问该端口的设备都可以读取、导入、修改和永久删除图书。请勿进行公网端口转发；跨网络访问前应先增加 HTTPS、身份认证和访问审计。
+
+应用页面使用基于 nonce 的 Content Security Policy；EPUB XHTML/CSS 在进入渲染
+iframe 前还会移除脚本、事件处理器和远程资源。
